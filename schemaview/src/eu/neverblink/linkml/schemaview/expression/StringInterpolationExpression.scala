@@ -45,7 +45,16 @@ object StringInterpolationExpression:
     def target: AttributeView = path.last
 
     /** The path as written in the schema, e.g. `address.city`. */
-    def pathString: String = path.map(_.slotView.slot.name).mkString(".")
+    def pathString: String = {
+      val sb = new java.lang.StringBuilder
+      var first = true
+      path.foreach { a =>
+        if (!first) sb.append('.')
+        first = false
+        sb.append(a.slotView.slot.name)
+      }
+      sb.toString
+    }
 
   /** Parse an interpolation string into literals and `{slot}` / `{slot.path}` substitutions. */
   def parse(input: String)(using context: AttributeView): Parsed[StringInterpolationExpression] =

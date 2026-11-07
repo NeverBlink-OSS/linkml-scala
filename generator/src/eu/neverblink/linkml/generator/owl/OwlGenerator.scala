@@ -28,9 +28,8 @@ class OwlGenerator(using sv: SchemaView) extends RdfGeneratorBase[OwlGeneratorOp
   override protected def defaultOptions: OwlGeneratorOptions = OwlGeneratorOptions()
 
   /** Builds the ontology without writing it as RDF. */
-  def ontology(options: OwlGeneratorOptions = defaultOptions): Ontology = new Build(
-    options,
-  ).ontology
+  def ontology(options: OwlGeneratorOptions = defaultOptions): Ontology =
+    new Build(options).ontology
 
   override def generate(sink: RdfSink, options: OwlGeneratorOptions = defaultOptions): Unit =
     OwlRdfWriter(sink).write(ontology(options))
@@ -55,66 +54,78 @@ object OwlGenerator {
   private val plainLiteral = Rdf.get("PlainLiteral").value
 
   /** Datatypes in the OWL 2 datatype map, which don't need to be declared. */
-  private val owl2Datatypes: Set[String] = Seq(
-    "decimal",
-    "integer",
-    "nonNegativeInteger",
-    "nonPositiveInteger",
-    "positiveInteger",
-    "negativeInteger",
-    "long",
-    "int",
-    "short",
-    "byte",
-    "unsignedLong",
-    "unsignedInt",
-    "unsignedShort",
-    "unsignedByte",
-    "double",
-    "float",
-    "string",
-    "normalizedString",
-    "token",
-    "language",
-    "Name",
-    "NCName",
-    "NMTOKEN",
-    "boolean",
-    "hexBinary",
-    "base64Binary",
-    "anyURI",
-    "dateTime",
-    "dateTimeStamp",
-  ).map(XmlSchema.prefix.concat).concat(
-    Seq(
-      Owl.get("real").value,
-      Owl.get("rational").value,
-      plainLiteral,
-      Rdf.get("XMLLiteral").value,
-      Rdfs.Literal.value,
-    ),
-  ).toSet
+  private val owl2Datatypes: Set[String] = {
+    val datatypes = Set.newBuilder[String]
+    Array(
+      "decimal",
+      "integer",
+      "nonNegativeInteger",
+      "nonPositiveInteger",
+      "positiveInteger",
+      "negativeInteger",
+      "long",
+      "int",
+      "short",
+      "byte",
+      "unsignedLong",
+      "unsignedInt",
+      "unsignedShort",
+      "unsignedByte",
+      "double",
+      "float",
+      "string",
+      "normalizedString",
+      "token",
+      "language",
+      "Name",
+      "NCName",
+      "NMTOKEN",
+      "boolean",
+      "hexBinary",
+      "base64Binary",
+      "anyURI",
+      "dateTime",
+      "dateTimeStamp",
+    ).foreach(local => datatypes.addOne(XmlSchema.prefix.concat(local)))
+    datatypes.addOne(Owl.get("real").value)
+    datatypes.addOne(Owl.get("rational").value)
+    datatypes.addOne(plainLiteral)
+    datatypes.addOne(Rdf.get("XMLLiteral").value)
+    datatypes.addOne(Rdfs.Literal.value)
+    datatypes.result()
+  }
   private[owl] val skosNotation = "http://www.w3.org/2004/02/skos/core#notation"
 
+  private val noIris: Array[String] = Array.empty
+
+  private val noRanges: mutable.ArrayBuffer[Filler] = mutable.ArrayBuffer.empty
+
+  /** Stands for a cardinality that is not set. */
+  private val noCardinality: Int = Int.MinValue
+
   private final class Build(options: OwlGeneratorOptions)(using sv: SchemaView) {
-    private val axioms = mutable.LinkedHashSet.empty[Axiom]
+
+    /** The axioms, once each, in the order they were first added. */
+    private val axioms = mutable.ArrayBuffer.empty[Axiom]
+    private val added = mutable.HashSet.empty[Axiom]
     // The IRIs of the declarations in `axioms`, to check for one without scanning all axioms.
     private val declared = mutable.HashSet.empty[String]
 
-    private def add(axiom: Axiom): Unit = {
-      axioms.addOne(axiom)
-      axiom match {
-        case d: Declaration => declared.addOne(d.iri)
-        case _ =>
+    private def add(axiom: Axiom): Unit =
+      if (added.add(axiom)) {
+        axioms.addOne(axiom)
+        axiom match {
+          case d: Declaration => declared.addOne(d.iri)
+          case _ =>
+        }
       }
-    }
 
     private def included(el: ElementView[?, ?]): Boolean =
       !options.onlyRootSchema || (el.definingSchema eq sv.root)
 
     private val descriptionProperty = options.metadataProfile match {
-      case OwlMetadataProfile.Linkml => "http://www.w3.org/2004/02/skos/core#definition"
-      case OwlMetadataProfile.Rdfs => Rdfs.comment.value
+      case _: OwlMetadataProfile.Linkml.type => "http://www.w3.org/2004/02/skos/core#definition"
+      case _: OwlMetadataProfile.Rdfs.type => Rdfs.comment.value
     }
 
     def ontology: Ontology = {
@@ -140,16 +151,20 @@ object OwlGenerator {
       val root = sv.root
       val imports =
         if (options.onlyRootSchema) {
-          val ids = mutable.LinkedHashSet.empty[String]
-          sv.schemas.tail.foreach { s =>
+          val ids = Vector.newBuilder[String]
+          val seen = mutable.HashSet.empty[String]
+          sv.schemas.iterator.drop(1).foreach { s =>
             val id = s.id.original
-            if (!id.startsWith("https://w3id.org/linkml/")) ids.addOne(id)
+            if (!id.startsWith("https://w3id.org/linkml/") && seen.add(id)) ids.addOne(id)
           }
-          ids.toSeq
+          ids.result()
         } else Nil
-      val header = metadataAnnotations(Metadata.of(root))
-        .concat(linkmlAnnotations(root)).concat(preferredNamespace)
-      val prefixes = Seq.newBuilder[(String, String)]
+      val headerBuilder = Vector.newBuilder[Annotation]
+      addMetadataAnnotations(Metadata.of(root), headerBuilder.addOne)
+      addLinkmlAnnotations(root, headerBuilder.addOne)
+      addPreferredNamespace(headerBuilder)
+      val header = headerBuilder.result()
+      val prefixes = Vector.newBuilder[(String, String)]
       if (!root.prefixes.values.exists(_.prefixReference.original == defaultPrefix.namespace)) {
         prefixes.addOne(defaultPrefix.prefix -> defaultPrefix.namespace)
       }
@@ -163,22 +178,27 @@ object OwlGenerator {
         imports = imports,
         annotations = header,
         prefixes = prefixes.result(),
-        axioms = axioms.toSeq,
+        axioms = Vector.from(axioms),
       )
     }
 
     /** OWL 2 DL requires every annotation property to be declared, except the built-in ones. */
     private def declareAnnotationProperties(header: Seq[Annotation]): Unit = {
-      val used = mutable.LinkedHashSet.empty[String]
-      header.foreach(a => used.addOne(a.property))
+      val used = mutable.ArrayBuffer.empty[String]
+      val seen = mutable.HashSet.empty[String]
+      def use(p: String): Unit = if (seen.add(p)) used.addOne(p)
+      header.foreach(a => use(a.property))
       axioms.foreach {
-        case a: AnnotationAssertion => used.addOne(a.annotation.property)
+        case a: AnnotationAssertion => use(a.annotation.property)
         case _ =>
       }
       // The ontology always has prefixes, which are written with these SHACL terms.
-      used.addOne(Shacl.declare.value).addOne(shaclPrefix.value).addOne(Shacl.namespace.value)
+      use(Shacl.declare.value)
+      use(shaclPrefix.value)
+      use(Shacl.namespace.value)
       // Never declare RDF, RDFS, OWL or XSD terms. An annotation like `rdf:type voaf:Vocabulary`
-      // is just written back as plain RDF.
+      // is just written back as plain RDF. Declaring adds to `axioms`, so it is done after the
+      // loop over them.
       used.foreach { p =>
         if (!declared(p) && !builtInAnnotationProperties(p) && !isReserved(p)) {
           add(Declaration(EntityKind.AnnotationProperty, p))
@@ -193,8 +213,10 @@ object OwlGenerator {
     /** Declare custom datatypes (outside the OWL 2 DL datatype map). */
     private def declareDatatypes(): Unit = {
       val declaredDatatypes = mutable.HashSet.empty[String]
-      val used = mutable.LinkedHashSet.empty[String]
-      def use(r: Filler): Unit = used.addAll(OwlAxiomIndex.datatypesIn(r))
+      val used = mutable.ArrayBuffer.empty[String]
+      val seen = mutable.HashSet.empty[String]
+      def use(r: Filler): Unit =
+        OwlAxiomIndex.foreachDatatypeIn(r)(d => if (seen.add(d)) used.addOne(d))
       axioms.foreach {
         case d: Declaration => if (d.kind == EntityKind.Datatype) declaredDatatypes.addOne(d.iri)
         case r: Range => use(r.range)
@@ -211,17 +233,17 @@ object OwlGenerator {
     }
 
     /** The default prefix as VANN annotations, which is how vocabularies usually state it. */
-    private def preferredNamespace: Seq[Annotation] =
-      Seq(
-        Annotation.text(
-          "http://purl.org/vocab/vann/preferredNamespacePrefix",
-          defaultPrefix.prefix,
-        ),
+    private def addPreferredNamespace(out: mutable.Growable[Annotation]): Unit = {
+      out.addOne(
+        Annotation.text("http://purl.org/vocab/vann/preferredNamespacePrefix", defaultPrefix.prefix),
+      )
+      out.addOne(
         Annotation(
           "http://purl.org/vocab/vann/preferredNamespaceUri",
           Literal(defaultPrefix.namespace, XmlSchema.anyURI),
         ),
       )
+    }
 
     /** The default prefix and its namespace. Without a default prefix, the schema name is used. */
     private lazy val defaultPrefix: (prefix: String, namespace: String) = {
@@ -239,100 +261,98 @@ object OwlGenerator {
     /** Annotates `iri` with the element's name and metadata. Exact mappings already written as
       * equivalence axioms are skipped.
       */
-    private def annotate(
-        iri: String,
-        el: ElementView[?, ?],
-        equivalent: Set[String] = Set.empty,
-    ): Unit =
+    private def annotate(iri: String, el: ElementView[?, ?], equivalent: Array[String]): Unit =
       annotate(iri, el.inner, equivalent)
 
+    private def annotate(iri: String, el: ElementView[?, ?]): Unit =
+      annotate(iri, el.inner, noIris)
+
+    /** Annotates `iri` with the metadata. Exact mappings in `equivalent`, which are written as
+      * equivalence axioms, are skipped.
+      */
     private def annotate(
         iri: String,
         metadata: CommonMetadata & Annotatable,
-        equivalent: Set[String],
+        equivalent: Array[String],
     ): Unit = {
       val m = Metadata.of(metadata)
       val kept =
         if (equivalent.isEmpty) m
-        else m.copy(exactMappings = m.exactMappings.filterNot(e => equivalent(e.original)))
-      metadataAnnotations(kept).foreach(a => add(AnnotationAssertion(iri, a)))
-      linkmlAnnotations(metadata).foreach(a => add(AnnotationAssertion(iri, a)))
+        else m.copy(exactMappings = m.exactMappings.filterNot(e => equivalent.contains(e.original)))
+      val add: Annotation => Unit = a => this.add(AnnotationAssertion(iri, a))
+      addMetadataAnnotations(kept, add)
+      addLinkmlAnnotations(metadata, add)
     }
 
     private def annotate(iri: String, metadata: CommonMetadata & Annotatable): Unit =
-      annotate(iri, metadata, Set.empty)
+      annotate(iri, metadata, noIris)
 
-    private lazy val classIris: Set[String] = {
-      val b = Set.newBuilder[String]
+    private lazy val classIris: mutable.HashSet[String] = {
+      val b = mutable.HashSet.empty[String]
       sv.classes.foreachEntry((_, c) => if (included(c)) b.addOne(c.uriStr))
-      b.result()
+      b
     }
 
-    private lazy val slotIris: Set[String] = {
-      val b = Set.newBuilder[String]
+    private lazy val slotIris: mutable.HashSet[String] = {
+      val b = mutable.HashSet.empty[String]
       sv.slotDefinitions.foreachEntry((_, s) => if (included(s)) b.addOne(s.uriStr))
-      b.result()
+      b
     }
 
-    /** Exact mappings to another element of the same kind in this ontology. These become OWL
-      * equivalences. The rest stay `skos:exactMatch`.
+    /** Exact mappings to another element of the same kind in this ontology, sorted and without
+      * duplicates. These become OWL equivalences. The rest stay `skos:exactMatch`.
       */
-    private def equivalentsOf(el: ElementView[?, ?], among: Set[String]): Set[String] = {
-      val b = Set.newBuilder[String]
+    private def equivalentsOf(
+        el: ElementView[?, ?],
+        among: mutable.HashSet[String],
+    ): Array[String] = {
+      val b = mutable.ArrayBuffer.empty[String]
       el.inner.exactMappings.foreach { m =>
         val uri = m.original
-        if (among(uri) && uri != el.uriStr) b.addOne(uri)
+        if (among(uri) && uri != el.uriStr && !b.contains(uri)) b.addOne(uri)
       }
-      b.result()
+      val sorted = b.toArray
+      java.util.Arrays.sort(sorted, Ordering.String)
+      sorted
     }
 
     /** `rdfs:label` is the title in each of its languages. OWL tools show `rdfs:label`, so the
       * title goes there and not to `dcterms:title`.
       */
-    private def metadataAnnotations(metadata: Metadata): Seq[Annotation] = {
+    private def addMetadataAnnotations(metadata: Metadata, b: Annotation => Unit): Unit = {
       // Use the element's language, or the schema's, as `gen-owl` does with `in_language`.
       val language = metadata.inLanguage.orElseFast(sv.root.inLanguage)
-      val b = Seq.newBuilder[Annotation]
       metadata.title.foreachFast {
-        case t: PlainText => b.addOne(Annotation.text(rdfsLabel, t.value, language))
+        case t: PlainText => b(Annotation.text(rdfsLabel, t.value, language))
         case t: MultilingualText =>
           val languages = t.mapping.keys.toArray
-          scala.util.Sorting.quickSort(languages)
+          java.util.Arrays.sort(languages, Ordering.String)
           languages.foreach { lang =>
-            b.addOne(Annotation.text(rdfsLabel, t.mapping(lang), Some(lang)))
+            b(Annotation.text(rdfsLabel, t.mapping(lang), Some(lang)))
           }
       }
-      b.addAll(Metadata.annotations(metadata.copy(title = None), descriptionProperty, language))
-      b.result()
+      Metadata.annotations(metadata.copy(title = None), descriptionProperty, language).foreach(b)
     }
 
     /** LinkML `annotations` with plain values, with the tag as the property. A tag without a colon
       * is put in the default namespace of its schema when the schema is read.
       */
-    private def linkmlAnnotations(el: Annotatable): Seq[Annotation] = {
-      val b = Seq.newBuilder[Annotation]
+    private def addLinkmlAnnotations(el: Annotatable, b: Annotation => Unit): Unit = {
       val language = sv.root.inLanguage
-      el.annotations.values.foreach { a =>
+      el.annotations.valuesIterator.foreach { a =>
         val property = a.extensionTag.original
         def add(v: String): Unit =
-          b.addOne(
-            Annotation(property, Metadata.inLanguage(annotationValue(v), language)),
-          )
-        a.extensionValue.yaml match {
-          case Right(node) =>
-            node match {
-              case ScalarNode(v, _) => add(v)
-              case SequenceNode(items, _) =>
-                items.foreach {
-                  case ScalarNode(v, _) => add(v)
-                  case _ =>
-                }
+          b(Annotation(property, Metadata.inLanguage(annotationValue(v), language)))
+        a.extensionValue.yaml.foreach {
+          case n: ScalarNode => add(n.value)
+          case n: SequenceNode =>
+            n.nodes.foreach {
+              case item: ScalarNode => add(item.value)
               case _ =>
             }
           case _ =>
         }
       }
-      b.result()
     }
 
     /** Reads a value as an IRI if it is a full IRI, as the importer writes IRIs that way. Anything
@@ -345,16 +365,16 @@ object OwlGenerator {
     // Classes
 
     /** The included classes, once each, in the schemas' order. */
-    private lazy val includedClasses: Seq[ClassView] = {
+    private lazy val includedClasses: mutable.ArrayBuffer[ClassView] = {
       val seen = mutable.HashSet.empty[String]
-      val b = Seq.newBuilder[ClassView]
+      val b = mutable.ArrayBuffer.empty[ClassView]
       sv.schemas.foreach(_.classes.keys.foreach { name =>
         if (seen.add(name)) {
           val c = sv.classes(name)
           if (included(c)) b.addOne(c)
         }
       })
-      b.result()
+      b
     }
 
     /** The included classes that name each class in `is_a`, in the schemas' order. */
@@ -376,7 +396,7 @@ object OwlGenerator {
       if (!isReserved(iri)) add(Declaration(EntityKind.Class, iri))
       val equivalent = equivalentsOf(cv, classIris)
       annotate(iri, cv, equivalent)
-      equivalent.toSeq.sorted.foreach(e => add(EquivalentClasses(Seq(self, ClassExpr.Named(e)))))
+      equivalent.foreach(e => add(EquivalentClasses(Vector(self, ClassExpr.Named(e)))))
 
       def addParent(r: Reference[ClassDefinition]): Unit =
         sv.classes.get(r.value).foreachFast { parent =>
@@ -385,13 +405,17 @@ object OwlGenerator {
 
       cv.cls.isA.foreachFast(addParent)
       cv.cls.mixins.foreach(addParent)
-      ownSlots(cv).foreach { name =>
-        cv.derivedAttributes.get(name).foreachFast { s =>
-          restrictions(cv, s).foreach(r => add(SubClassOf(self, r)))
+      val seen = mutable.HashSet.empty[String]
+      def restrict(name: String): Unit =
+        if (seen.add(name)) {
+          cv.derivedAttributes.get(name).foreachFast(s => addRestrictions(cv, s, self))
         }
-      }
-      cv.cls.uniqueKeys.values.foreach { key =>
-        val b = Seq.newBuilder[String]
+      // The slots the class declares or refines itself, not ones it just inherits.
+      cv.cls.slots.foreach(s => restrict(s.value))
+      cv.cls.attributes.keysIterator.foreach(restrict)
+      cv.cls.slotUsage.keysIterator.foreach(restrict)
+      cv.cls.uniqueKeys.valuesIterator.foreach { key =>
+        val b = Vector.newBuilder[String]
         key.uniqueKeySlots.foreach { s =>
           cv.derivedAttributes.get(s.value).foreachFast { a =>
             if (!a.slot.identifier) b.addOne(a.uriStr)
@@ -404,33 +428,23 @@ object OwlGenerator {
       // Every instance of an abstract class is an instance of one of its children. With only one
       // child, that would make the two classes equivalent, so we skip it.
       if (children.sizeIs > 1 && (cv.cls.`abstract` || cv.cls.childrenAreMutuallyDisjoint)) {
-        val operands = children.toSeq
+        val operands = Vector.from(children)
         if (cv.cls.`abstract`) add(SubClassOf(self, ClassExpr.UnionOf(operands)))
         if (cv.cls.childrenAreMutuallyDisjoint) add(DisjointClasses(operands))
       }
       cv.cls.disjointWith.foreach { r =>
         sv.classes.get(r.value).foreachFast { other =>
-          add(DisjointClasses(Seq(self, ClassExpr.Named(other.uriStr))))
+          add(DisjointClasses(Vector(self, ClassExpr.Named(other.uriStr))))
         }
       }
     }
 
-    /** Names of the slots the class declares or refines itself, not ones it just inherits. */
-    private def ownSlots(cv: ClassView): mutable.LinkedHashSet[String] = {
-      val names = mutable.LinkedHashSet.empty[String]
-      cv.cls.slots.foreach(s => names.addOne(s.value))
-      names.addAll(cv.cls.attributes.keys).addAll(cv.cls.slotUsage.keys)
-    }
-
-    private def restrictions(cv: ClassView, s: SlotView): Seq[ClassExpr] =
-      if (s.slot.identifier) Nil
-      else {
+    /** Adds the restrictions that the class states on the slot, as superclasses of `self`. */
+    private def addRestrictions(cv: ClassView, s: SlotView, self: ClassExpr.Named): Unit =
+      if (!s.slot.identifier) {
         val name = s.slot.name
-        val usage = cv.cls.slotUsage.get(name)
-        val sources = definitionsOf(name, Some(cv))
-
-        def first[A](f: SlotDefinition => Option[A]): Option[A] =
-          sources.iterator.flatMap(f).nextOption()
+        val usage = cv.cls.slotUsage.getOrElse(name, null)
+        val sources = definitionsOf(name, cv)
 
         def any(f: SlotDefinition => Boolean): Boolean = sources.exists(f)
 
@@ -438,42 +452,49 @@ object OwlGenerator {
         // Annotation properties only get the restrictions the schema states explicitly.
         val annotation = kind == EntityKind.AnnotationProperty
         val p = PropertyRef(s.uriStr)
-        val stated = Seq.newBuilder[ClassExpr]
+        var stated = 0
+        def state(e: ClassExpr): Unit = {
+          add(SubClassOf(self, e))
+          stated += 1
+        }
         // With `slot_usage` on an inherited slot, state the range only if it is narrowed. For a
         // slot from an imported schema, the importer can't tell a repeated range from a new one.
         val declares = cv.cls.slots.exists(_.value == name) || cv.cls.attributes.contains(name)
-        val narrows = usage.foldFast(false)(u => u.range.isDefined || u.anyOf.nonEmpty)
+        val narrows = (usage ne null) && (usage.range.isDefined || usage.anyOf.nonEmpty)
         val range =
           if (annotation) {
-            usage.flatMapFast(_.range).flatMapFast(r => sv.getElement(r.value))
-              .flatMapFast(rangeOfElement(_, s.slot))
+            val el =
+              if ((usage ne null) && usage.range.isDefined) {
+                sv.getElement(usage.range.get.value).orNullFast
+              } else null
+            if (el ne null) rangeOfElement(el, s.slot) else null
           } else if (declares || narrows) nearestRange(s, sources)
-          else None
-        range.foreachFast(r => stated.addOne(ClassExpr.AllValuesFrom(p, r)))
-        val exact = first(_.exactCardinality)
-        val min = exact.orElseFast(first(_.minimumCardinality))
-          .orElseFast(if (any(d => d.required || d.key)) Some(1) else None)
+          else null
+        if (range ne null) state(ClassExpr.AllValuesFrom(p, range))
+        val exact = firstCardinality(sources, _.exactCardinality)
+        var min = exact
+        if (min == noCardinality) min = firstCardinality(sources, _.minimumCardinality)
+        if (min == noCardinality && any(d => d.required || d.key)) min = 1
         // A subclass inherits this limit, so a `slot_usage` there that makes the slot multivalued
         // has no effect (LNK-238).
-        val max = exact.orElseFast(first(_.maximumCardinality))
-          .orElseFast(if (!annotation && !any(_.multivalued) && !isText(s)) Some(1) else None)
+        var max = exact
+        if (max == noCardinality) max = firstCardinality(sources, _.maximumCardinality)
+        if (max == noCardinality && !annotation && !any(_.multivalued) && !isText(s)) max = 1
         // OWL 2 DL allows no cardinality on a non-simple property, so a required value becomes
         // `someValuesFrom`.
         if (nonSimple(s.uriStr)) {
-          if (min.foldFast(false)(_ > 0)) {
-            stated.addOne(ClassExpr.SomeValuesFrom(p, ClassExpr.Thing))
-          }
-        } else if (min.isDefined && min == max) {
-          min.foreachFast(m => stated.addOne(ClassExpr.Cardinality(ClassExpr.Bound.Exact, m, p)))
+          if (min != noCardinality && min > 0) state(ClassExpr.SomeValuesFrom(p, ClassExpr.Thing))
+        } else if (min != noCardinality && min == max) {
+          state(ClassExpr.Cardinality(ClassExpr.Bound.Exact, min, p))
         } else {
-          min.foreachFast { m =>
-            if (m > 0) stated.addOne(ClassExpr.Cardinality(ClassExpr.Bound.Min, m, p))
+          if (min != noCardinality && min > 0) {
+            state(ClassExpr.Cardinality(ClassExpr.Bound.Min, min, p))
           }
-          max.foreachFast(m => stated.addOne(ClassExpr.Cardinality(ClassExpr.Bound.Max, m, p)))
+          if (max != noCardinality) state(ClassExpr.Cardinality(ClassExpr.Bound.Max, max, p))
           // A single-valued `langstring` slot holds at most one plain string. OWL can't say that
           // it holds at most one text per language. The importer reads this back as single-valued.
-          if (max.isEmpty && !annotation && !any(_.multivalued) && isText(s)) {
-            stated.addOne(
+          if (max == noCardinality && !annotation && !any(_.multivalued) && isText(s)) {
+            state(
               ClassExpr.Cardinality(
                 ClassExpr.Bound.Max,
                 1,
@@ -483,36 +504,69 @@ object OwlGenerator {
             )
           }
         }
-        first(_.equalsString).flatMapFast(valueOf(s, _))
-          .orElseFast(first(_.equalsNumber).mapFast(n => Literal(n.toString, XmlSchema.integer)))
-          .foreachFast(v => stated.addOne(ClassExpr.HasValue(p, v)))
+        val text = firstOf(sources, _.equalsString)
+        var value: Value = if (text ne null) valueOf(s, text) else null
+        if (value eq null) {
+          val n = firstCardinality(sources, _.equalsNumber)
+          if (n != noCardinality) value = Literal(n.toString, XmlSchema.integer)
+        }
+        if (value ne null) state(ClassExpr.HasValue(p, value))
 
         // `has_member`, plus any under `all_of`. The importer writes a class that needs values of
         // several kinds that way.
-        def addMember(m: AnonymousSlotExpression): Unit =
-          expressionRange(s, m).foreachFast(r => stated.addOne(ClassExpr.SomeValuesFrom(p, r)))
+        def addMember(m: AnonymousSlotExpression): Unit = {
+          val r = expressionRange(s, m)
+          if (r ne null) state(ClassExpr.SomeValuesFrom(p, r))
+        }
 
-        first(_.hasMember).foreachFast(addMember)
-        usage.foreachFast(_.allOf.foreach(_.hasMember.foreachFast(addMember)))
-        val result = stated.result()
+        val member = firstOf(sources, _.hasMember)
+        if (member ne null) addMember(member)
+        if (usage ne null) usage.allOf.foreach(_.hasMember.foreachFast(addMember))
         // A class that uses a slot without constraining it still records the use, with a
         // restriction that any value meets.
-        if (result.nonEmpty || annotation || !declares) result
-        else {
+        if (stated == 0 && !annotation && declares) {
           val anything = kind match {
             case _: EntityKind.DataProperty.type => DataRange.Literal
             case _ => ClassExpr.Thing
           }
-          Seq(ClassExpr.AllValuesFrom(p, anything))
+          state(ClassExpr.AllValuesFrom(p, anything))
         }
       }
 
-    /** The value that `equals_string` means for the slot's range.
+    /** The first value of a field in the definitions, or `null` if none has it. */
+    private def firstOf[A <: AnyRef](
+        sources: collection.Seq[SlotDefinition],
+        f: SlotDefinition => Option[A],
+    ): A = {
+      val it = sources.iterator
+      while (it.hasNext) {
+        val v = f(it.next())
+        if (v.isDefined) return v.get
+      }
+      null.asInstanceOf[A]
+    }
+
+    /** The first value of a number field in the definitions, or [[noCardinality]] if none has it.
+      */
+    private def firstCardinality(
+        sources: collection.Seq[SlotDefinition],
+        f: SlotDefinition => Option[Int],
+    ): Int = {
+      val it = sources.iterator
+      while (it.hasNext) {
+        val v = f(it.next())
+        if (v.isDefined) return v.get
+      }
+      noCardinality
+    }
+
+    /** The value that `equals_string` means for the slot's range, or `null` if it is not a
+      * permissible value of the slot's enum.
       *
       * @throws SchemaConversionException
       *   if the value should be an IRI but isn't a URI
       */
-    private def valueOf(s: SlotView, text: String): Option[Value] = {
+    private def valueOf(s: SlotView, text: String): Value = {
       def iri: Value = {
         val uri = s.uriValueOrNull(text)
         if (uri ne null) Iri(uri)
@@ -522,111 +576,132 @@ object OwlGenerator {
           )
       }
       s.derivedRange.resolve.orNullFast match {
-        case ev: EnumView => ev.toMeaning.get(text).mapFast(m => Iri(m.original))
+        case ev: EnumView =>
+          val meaning = ev.toMeaning.getOrElse(text, null)
+          if (meaning ne null) Iri(meaning.original) else null
         case tv: TypeView =>
           // An `equals_string` of a `langstring` slot is a plain string, an `xsd:string` literal
-          new Some(
-            if (tv.isIri) iri
-            else if (tv.runtimeType eq LocalizedTextType) Literal(text)
-            else Literal(text, Iri(baseDatatype(tv))),
-          )
-        case _: ClassView => new Some(iri)
-        case _ => new Some(Literal(text))
+          if (tv.isIri) iri
+          else if (tv.runtimeType eq LocalizedTextType) Literal(text)
+          else Literal(text, Iri(baseDatatype(tv)))
+        case _: ClassView => iri
+        case _ => Literal(text)
       }
     }
 
     // Ranges
 
-    private def rangeOf(s: SlotView, context: Option[ClassView] = None): Option[Filler] =
+    /** The range of a slot, in a class if `context` is not `null`, or `null` if it has none. */
+    private def rangeOf(s: SlotView, context: ClassView = null): Filler =
       nearestRange(s, definitionsOf(s.slot.name, context))
 
     /** The definitions of a slot, nearest first: the class's `slot_usage`, the attributes of the
       * class and its ancestors, then the slot and its parents. An ancestor's `slot_usage` is
       * skipped, because OWL passes it down through the subclass axiom anyway.
       */
-    private def definitionsOf(name: String, context: Option[ClassView]): Seq[SlotDefinition] = {
-      val b = Seq.newBuilder[SlotDefinition]
-      context.foreachFast { c =>
-        c.cls.slotUsage.get(name).foreachFast(u => b.addOne(u))
-        c.ancestorsWithSelf.foreach(_.cls.attributes.get(name).foreachFast(a => b.addOne(a)))
+    private def definitionsOf(
+        name: String,
+        context: ClassView,
+    ): mutable.ArrayBuffer[SlotDefinition] = {
+      val b = mutable.ArrayBuffer.empty[SlotDefinition]
+      if (context ne null) {
+        context.cls.slotUsage.get(name).foreachFast(u => b.addOne(u))
+        context.ancestorsWithSelf.foreach(_.cls.attributes.get(name).foreachFast(a => b.addOne(a)))
       }
       sv.slotDefinitions.get(name).foreachFast(_.ancestorsWithSelf.foreach(a => b.addOne(a.slot)))
-      b.result()
+      b
     }
 
-    /** The range of the nearest definition that has one. Skipping an ancestor's `slot_usage` loses
-      * the range when the class lists the slot itself, or when the slot URI changes on the way
-      * (LNK-236). The derived slot is not used, since it keeps the inherited `any_of` lists in
-      * `all_of`, and OWL already requires them through subclassing.
+    /** The range of the nearest definition that has one, or `null` if it can't be said in OWL.
+      * Skipping an ancestor's `slot_usage` loses the range when the class lists the slot itself, or
+      * when the slot URI changes on the way (LNK-236). The derived slot is not used, since it keeps
+      * the inherited `any_of` lists in `all_of`, and OWL already requires them through subclassing.
       */
-    private def nearestRange(s: SlotView, definitions: Seq[SlotDefinition]): Option[Filler] = {
+    private def nearestRange(s: SlotView, definitions: collection.Seq[SlotDefinition]): Filler = {
       val e = definitions.find(d => d.range.isDefined || d.anyOf.nonEmpty).orNullFast
       if (e eq null) {
-        sv.getDefaultRange(s.definingSchema).resolve.flatMapFast(rangeOfElement(_, s.slot))
+        val el = sv.getDefaultRange(s.definingSchema).resolve.orNullFast
+        if (el ne null) rangeOfElement(el, s.slot) else null
       } else if (
         e.anyOf.nonEmpty &&
         e.range.foldFast(true)(r => sv.classes.get(r.value).foldFast(false)(_.isAny))
       ) {
-        val anyOf = e.anyOf.distinct
-        val alternatives = anyOf.flatMap(a => expressionRange(s, a))
-        if (alternatives.sizeIs != anyOf.size) None
-        else union(alternatives)
-      } else e.range.flatMapFast(r => sv.getElement(r.value)).flatMapFast(rangeOfElement(_, s.slot))
+        val seen = mutable.HashSet.empty[AnonymousSlotExpression]
+        val alternatives = mutable.ArrayBuffer.empty[Filler]
+        val it = e.anyOf.iterator
+        while (it.hasNext) {
+          val a = it.next()
+          if (seen.add(a)) {
+            val r = expressionRange(s, a)
+            if (r eq null) return null
+            alternatives.addOne(r)
+          }
+        }
+        union(alternatives)
+      } else if (e.range.isDefined) {
+        val el = sv.getElement(e.range.get.value).orNullFast
+        if (el ne null) rangeOfElement(el, s.slot) else null
+      } else null
     }
 
-    /** The range of one `any_of` or `has_member` entry. */
-    private def expressionRange(s: SlotView, e: AnonymousSlotExpression): Option[Filler] =
-      e.range.flatMapFast(r => sv.getElement(r.value)).orElseFast(s.derivedRange.resolve)
-        .flatMapFast(rangeOfElement(_, e))
+    /** The range of one `any_of` or `has_member` entry, or `null` if it can't be said in OWL. */
+    private def expressionRange(s: SlotView, e: AnonymousSlotExpression): Filler = {
+      var el: ElementView[?, ?] = null
+      if (e.range.isDefined) el = sv.getElement(e.range.get.value).orNullFast
+      if (el eq null) el = s.derivedRange.resolve.orNullFast
+      if (el ne null) rangeOfElement(el, e) else null
+    }
 
     /** A union of the alternatives, or the only alternative, since OWL 2 DL requires at least two
-      * operands in a union.
+      * operands in a union. `null` if some are classes and some are data ranges.
       */
-    private def union(alternatives: Seq[Filler]): Option[Filler] =
-      if (alternatives.sizeIs == 1) alternatives.headOption
+    private def union(alternatives: mutable.ArrayBuffer[Filler]): Filler =
+      if (alternatives.length == 1) alternatives.head
       else if (alternatives.forall(_.isInstanceOf[DataRange])) {
-        Some(DataRange.UnionOf(alternatives.asInstanceOf[Seq[DataRange]]))
+        val operands = Vector.newBuilder[DataRange]
+        alternatives.foreach(a => operands.addOne(a.asInstanceOf[DataRange]))
+        DataRange.UnionOf(operands.result())
       } else if (alternatives.forall(_.isInstanceOf[ClassExpr])) {
-        Some(ClassExpr.UnionOf(alternatives.asInstanceOf[Seq[ClassExpr]]))
-      } else None
+        val operands = Vector.newBuilder[ClassExpr]
+        alternatives.foreach(a => operands.addOne(a.asInstanceOf[ClassExpr]))
+        ClassExpr.UnionOf(operands.result())
+      } else null
 
-    private def rangeOfElement(el: ElementView[?, ?], constraints: SlotExpression): Option[Filler] =
+    /** The range for an element, or `null` if it is `Any` or an IRI type. */
+    private def rangeOfElement(el: ElementView[?, ?], constraints: SlotExpression): Filler =
       el match {
-        case cv: ClassView =>
-          if (cv.isAny) None
-          else Some(ClassExpr.Named(cv.uriStr))
-        case ev: EnumView => Some(ClassExpr.Named(ev.uriStr))
+        case cv: ClassView => if (cv.isAny) null else ClassExpr.Named(cv.uriStr)
+        case ev: EnumView => ClassExpr.Named(ev.uriStr)
         // Values with an implicit prefix are IRIs in RDF, as in the SHACL generator.
-        case tv: TypeView if tv.isIri || constraints.implicitPrefix.isDefined => None
+        case tv: TypeView if tv.isIri || constraints.implicitPrefix.isDefined => null
         case tv: TypeView =>
-          val own =
-            facets(
-              constraints.minimumValue,
-              constraints.maximumValue,
-              constraints.minimumLength,
-              constraints.maximumLength,
-              LinkmlPattern.option(constraints.pattern),
+          val own = facets(
+            constraints.minimumValue,
+            constraints.maximumValue,
+            constraints.minimumLength,
+            constraints.maximumLength,
+            LinkmlPattern.option(constraints.pattern),
+            tv,
+          )
+          if (own.isEmpty) datatypeOf(tv)
+          else {
+            // OWL only allows facets on built-in datatypes, so repeat the type's own constraints
+            // next to the slot's.
+            val d = tv.derivedType
+            val inherited = facets(
+              d.minimumValue,
+              d.maximumValue,
+              d.minimumLength,
+              d.maximumLength,
+              tv.pattern,
               tv,
             )
-          Some(
-            if (own.isEmpty) datatypeOf(tv)
-            else {
-              // OWL only allows facets on built-in datatypes, so repeat the type's own constraints
-              // next to the slot's.
-              val d = tv.derivedType
-              val inherited = facets(
-                d.minimumValue,
-                d.maximumValue,
-                d.minimumLength,
-                d.maximumLength,
-                tv.pattern,
-                tv,
-              )
-                .filterNot(f => own.exists(_._1 == f._1))
-              DataRange.Restriction(baseDatatype(tv), own.concat(inherited))
-            },
-          )
-        case _ => None
+            val all = Vector.newBuilder[(String, Literal)]
+            all.addAll(own)
+            inherited.foreach(f => if (!own.exists(_._1 == f._1)) all.addOne(f))
+            DataRange.Restriction(baseDatatype(tv), all.result())
+          }
+        case _ => null
       }
 
     /** The data range of a type. A `LocalizedText` type, such as `langstring`, is
@@ -635,35 +710,25 @@ object OwlGenerator {
     private def datatypeOf(tv: TypeView): DataRange =
       if (tv.runtimeType eq LocalizedTextType) DataRange.Datatype(plainLiteral)
       else if (tv.isPrimitive) {
-        tv.name match {
-          case "date_or_datetime" =>
-            DataRange.UnionOf(
-              Seq(
-                DataRange.Datatype(XmlSchema.date.value),
-                DataRange.Datatype(XmlSchema.dateTime.value),
-              ),
-            )
-          case _ => DataRange.Datatype(tv.uriStr)
-        }
+        if (tv.name == "date_or_datetime") {
+          DataRange.UnionOf(
+            Vector(
+              DataRange.Datatype(XmlSchema.date.value),
+              DataRange.Datatype(XmlSchema.dateTime.value),
+            ),
+          )
+        } else DataRange.Datatype(tv.uriStr)
       } else {
         // A type without its own `uri` stands for the ancestor it inherits the `uri` from.
-        tv.ancestorsWithSelf.find(_._type.typeUri.isDefined) match {
-          case Some(origin) if origin.isPrimitive && !hasFacets(tv) => datatypeOf(origin)
-          case _ if hasFacets(tv) && OwlRdfReader.isBuiltInDatatype(tv.uriStr) =>
-            val d = tv.derivedType
-            DataRange.Restriction(
-              tv.uriStr,
-              facets(
-                d.minimumValue,
-                d.maximumValue,
-                d.minimumLength,
-                d.maximumLength,
-                tv.pattern,
-                tv,
-              ),
-            )
-          case _ => DataRange.Datatype(tv.uriStr)
-        }
+        val origin = tv.ancestorsWithSelf.find(_._type.typeUri.isDefined).orNullFast
+        if ((origin ne null) && origin.isPrimitive && !hasFacets(tv)) datatypeOf(origin)
+        else if (hasFacets(tv) && OwlRdfReader.isBuiltInDatatype(tv.uriStr)) {
+          val d = tv.derivedType
+          DataRange.Restriction(
+            tv.uriStr,
+            facets(d.minimumValue, d.maximumValue, d.minimumLength, d.maximumLength, tv.pattern, tv),
+          )
+        } else DataRange.Datatype(tv.uriStr)
       }
 
     /** Whether the type comes from LinkML's own schemas, such as `linkml:types`. */
@@ -681,7 +746,7 @@ object OwlGenerator {
       */
     private def baseDatatype(tv: TypeView): String = {
       val uri = tv.uriStr
-      if OwlRdfReader.isBuiltInDatatype(uri) then uri
+      if (OwlRdfReader.isBuiltInDatatype(uri)) uri
       else
         tv.runtimeType match {
           case _: IntegerType.type => XmlSchema.integer.value
@@ -707,7 +772,7 @@ object OwlGenerator {
         tv: TypeView,
     ): Seq[(String, Literal)] = {
       val datatype = Iri(baseDatatype(tv))
-      val b = Seq.newBuilder[(String, Literal)]
+      val b = Vector.newBuilder[(String, Literal)]
       min.foreachFast(v =>
         b.addOne(XmlSchema.minInclusive.value -> Literal(v.value.strip, datatype)),
       )
@@ -765,17 +830,28 @@ object OwlGenerator {
       case _ => false
     }
 
-    /** Whether each property is single-valued in every class that uses it. */
-    private lazy val singleValued: collection.Map[String, Boolean] = {
-      val b = mutable.HashMap.empty[String, Boolean]
+    /** The properties some class uses, and those some class uses as multivalued or as text. */
+    private lazy val propertyUses: (
+        used: mutable.HashSet[String],
+        multivalued: mutable.HashSet[String],
+    ) = {
+      val used = mutable.HashSet.empty[String]
+      val multivalued = mutable.HashSet.empty[String]
       sv.classes.foreachEntry { (_, c) =>
         c.derivedAttributes.foreachEntry { (_, a) =>
           val iri = a.uriStr
-          b.update(iri, !a.slot.multivalued && !isText(a) && b.getOrElse(iri, true))
+          used.addOne(iri)
+          if (a.slot.multivalued || isText(a)) multivalued.addOne(iri)
         }
       }
-      b
+      (used = used, multivalued = multivalued)
     }
+
+    /** Whether the property is single-valued in every class that uses it, or `ifUnused` if no class
+      * uses it.
+      */
+    private def isSingleValued(iri: String, ifUnused: Boolean): Boolean =
+      if (propertyUses.used.contains(iri)) !propertyUses.multivalued.contains(iri) else ifUnused
 
     private def kindOf(s: SlotView): EntityKind = {
       val owl = "http://www.w3.org/2002/07/owl#"
@@ -786,27 +862,27 @@ object OwlGenerator {
       else {
         // Look at every use of the property, since a slot may only get its range in a class.
         // An attribute has no range outside its classes.
-        val own = if (sv.slotDefinitions.contains(s.slot.name)) rangeOf(s) else None
-        val uses = rangesByProperty.getOrElse(s.uriStr, Nil)
-        if (own.isDefined || uses.exists(_.isDefined)) {
+        val own = if (sv.slotDefinitions.contains(s.slot.name)) rangeOf(s) else null
+        val uses = rangesByProperty.getOrElse(s.uriStr, noRanges)
+        if ((own ne null) || uses.exists(_ ne null)) {
           if (
-            own.foldFast(true)(_.isInstanceOf[DataRange]) &&
-            uses.forall(_.foldFast(true)(_.isInstanceOf[DataRange]))
+            ((own eq null) || own.isInstanceOf[DataRange]) &&
+            uses.forall(u => (u eq null) || u.isInstanceOf[DataRange])
           ) EntityKind.DataProperty
           else EntityKind.ObjectProperty
-        } else {
+        } else if (s.parents.nonEmpty) {
           // Nothing to go on, so use the parent's kind.
-          s.parents.headOption.mapFast(kindOf).getOrElseFast(EntityKind.ObjectProperty)
-        }
+          kindOf(s.parents.head)
+        } else EntityKind.ObjectProperty
       }
     }
 
-    /** The range of each use of each property, in every class. */
-    private lazy val rangesByProperty: collection.Map[String, collection.Seq[Option[Filler]]] = {
-      val b = mutable.HashMap.empty[String, mutable.ArrayBuffer[Option[Filler]]]
+    /** The range of each use of each property, in every class, or `null` for a use without one. */
+    private lazy val rangesByProperty: mutable.HashMap[String, mutable.ArrayBuffer[Filler]] = {
+      val b = mutable.HashMap.empty[String, mutable.ArrayBuffer[Filler]]
       sv.classes.foreachEntry { (_, c) =>
         c.derivedAttributes.foreachEntry { (_, a) =>
-          b.getOrElseUpdate(a.uriStr, mutable.ArrayBuffer.empty).addOne(rangeOf(a, Some(c)))
+          b.getOrElseUpdate(a.uriStr, mutable.ArrayBuffer.empty).addOne(rangeOf(a, c))
         }
       }
       b
@@ -819,21 +895,25 @@ object OwlGenerator {
       add(Declaration(kind, iri))
       val equivalent = equivalentsOf(slotView, slotIris)
       annotate(iri, slotView, equivalent)
-      equivalent.toSeq.sorted.foreach(e => add(EquivalentProperties(Seq(iri, e))))
+      equivalent.foreach(e => add(EquivalentProperties(Vector(iri, e))))
       val annotation = kind == EntityKind.AnnotationProperty
       // A slot without its own range gets its parent's through `rdfs:subPropertyOf`. An annotation
       // property only gets a range it states, since its values aren't the schema's data.
-      if (annotation)
-        slot.range.flatMapFast(r => sv.getElement(r.value)).flatMapFast(rangeOfElement(_, slot))
-          .foreachFast(r => add(Range(iri, r)))
-      else if (
-        slot.range.isDefined || slot.anyOf.nonEmpty || (slot.isA.isEmpty && slot.mixins.isEmpty)
-      ) rangeOf(slotView).foreachFast(r => add(Range(iri, r)))
+      val range =
+        if (annotation) {
+          val el =
+            if (slot.range.isDefined) sv.getElement(slot.range.get.value).orNullFast else null
+          if (el ne null) rangeOfElement(el, slot) else null
+        } else if (
+          slot.range.isDefined || slot.anyOf.nonEmpty || (slot.isA.isEmpty && slot.mixins.isEmpty)
+        ) rangeOf(slotView)
+        else null
+      if (range ne null) add(Range(iri, range))
       slot.domain.foreachFast { d =>
         sv.classes.get(d.value).foreachFast(c => add(Domain(iri, ClassExpr.Named(c.uriStr))))
       }
       // `domain` holds one class, so a union of classes as the domain is kept in `domain_of`.
-      val b = Seq.newBuilder[ClassExpr]
+      val b = Vector.newBuilder[ClassExpr]
       slot.domainOf.foreach { d =>
         sv.classes.get(d.value).foreachFast(c => b.addOne(ClassExpr.Named(c.uriStr)))
       }
@@ -862,7 +942,7 @@ object OwlGenerator {
         if (slot.reflexive) add(Characteristic(iri, PropertyCharacteristic.Reflexive))
         if (slot.irreflexive) add(Characteristic(iri, PropertyCharacteristic.Irreflexive))
         if (
-          !slot.multivalued && !isText(slotView) && singleValued.getOrElse(iri, true) &&
+          !slot.multivalued && !isText(slotView) && isSingleValued(iri, ifUnused = true) &&
           !nonSimple(iri)
         ) {
           add(Characteristic(iri, PropertyCharacteristic.Functional))
@@ -874,7 +954,7 @@ object OwlGenerator {
       * cardinality are stated on their class.
       */
     private def addAttributes(cv: ClassView): Unit =
-      cv.cls.attributes.foreach { (name, attribute) =>
+      cv.cls.attributes.foreachEntry { (name, attribute) =>
         val derived = cv.derivedAttributes(name)
         val iri = derived.uriStr
         if (!derived.slot.identifier && !declared(iri)) {
@@ -883,12 +963,12 @@ object OwlGenerator {
           annotate(iri, attribute)
           if (kind != EntityKind.AnnotationProperty) {
             // If every use of the property has the same range, that becomes its range.
-            val uses = rangesByProperty.getOrElse(iri, Nil)
+            val uses = rangesByProperty.getOrElse(iri, noRanges)
             if (uses.nonEmpty) {
               val range = uses.head
-              if (uses.forall(_ == range)) range.foreachFast(r => add(Range(iri, r)))
+              if ((range ne null) && uses.forall(_ == range)) add(Range(iri, range))
             }
-            if (singleValued.getOrElse(iri, false) && !nonSimple(iri)) {
+            if (isSingleValued(iri, ifUnused = false) && !nonSimple(iri)) {
               add(Characteristic(iri, PropertyCharacteristic.Functional))
             }
           }
@@ -904,7 +984,8 @@ object OwlGenerator {
       ev.parents.foreach { parent =>
         add(SubClassOf(ClassExpr.Named(iri), ClassExpr.Named(parent.uriStr)))
       }
-      val values = ev.derivedValues.map { pvv =>
+      val valuesBuilder = Vector.newBuilder[String]
+      ev.derivedValues.foreach { pvv =>
         val pv = pvv.pv
         val pvIri = pvv.uriStr
         options.permissibleValues match {
@@ -922,15 +1003,16 @@ object OwlGenerator {
           add(AnnotationAssertion(pvIri, Annotation.text(skosNotation, pv.text)))
         }
         annotate(pvIri, pv)
-        pvIri
+        valuesBuilder.addOne(pvIri)
       }
+      val values = valuesBuilder.result()
       if (values.nonEmpty)
         options.permissibleValues match {
           case OwlPermissibleValueKind.Individual =>
-            add(EquivalentClasses(Seq(ClassExpr.Named(iri), ClassExpr.OneOf(values))))
+            add(EquivalentClasses(Vector(ClassExpr.Named(iri), ClassExpr.OneOf(values))))
           case OwlPermissibleValueKind.Class =>
             val union = ClassExpr.UnionOf(values.map(ClassExpr.Named(_)))
-            add(EquivalentClasses(Seq(ClassExpr.Named(iri), union)))
+            add(EquivalentClasses(Vector(ClassExpr.Named(iri), union)))
         }
     }
 
@@ -941,30 +1023,46 @@ object OwlGenerator {
       */
     private def addType(tv: TypeView): Unit =
       datatypeOf(tv) match {
-        case DataRange.Datatype(iri) if !OwlRdfReader.isBuiltInDatatype(iri) =>
-          add(Declaration(EntityKind.Datatype, iri))
-          annotate(iri, tv)
-          if (hasFacets(tv)) {
-            val d = tv.derivedType
-            val restriction = DataRange.Restriction(
-              baseDatatype(tv),
-              facets(
-                d.minimumValue,
-                d.maximumValue,
-                d.minimumLength,
-                d.maximumLength,
-                tv.pattern,
-                tv,
-              ),
-            )
-            add(DatatypeDefinition(iri, restriction))
-          }
-        case DataRange.Datatype(iri)
-            if !Metadata.of(tv._type).isEmpty &&
-              sv.types.values.count(t => !isLinkmlOwn(t) && t.uriStr == iri) == 1 =>
-          // No declaration needed, but keep what the schema says about the datatype.
-          annotate(iri, tv)
+        case d: DataRange.Datatype => addType(tv, d.iri)
         case _ =>
       }
+
+    private def addType(tv: TypeView, iri: String): Unit =
+      if (!OwlRdfReader.isBuiltInDatatype(iri)) {
+        add(Declaration(EntityKind.Datatype, iri))
+        annotate(iri, tv)
+        if (hasFacets(tv)) {
+          val d = tv.derivedType
+          val restriction = DataRange.Restriction(
+            baseDatatype(tv),
+            facets(
+              d.minimumValue,
+              d.maximumValue,
+              d.minimumLength,
+              d.maximumLength,
+              tv.pattern,
+              tv,
+            ),
+          )
+          add(DatatypeDefinition(iri, restriction))
+        }
+      } else if (
+        !Metadata.of(tv._type).isEmpty && typeUris.once.contains(iri) && !typeUris.more.contains(
+          iri,
+        )
+      ) {
+        // No declaration needed, but keep what the schema says about the datatype.
+        annotate(iri, tv)
+      }
+
+    /** The `uri` of the schema's types, not LinkML's own, and those that several types have. */
+    private lazy val typeUris: (once: mutable.HashSet[String], more: mutable.HashSet[String]) = {
+      val once = mutable.HashSet.empty[String]
+      val more = mutable.HashSet.empty[String]
+      sv.types.valuesIterator.foreach { t =>
+        if (!isLinkmlOwn(t) && !once.add(t.uriStr)) more.addOne(t.uriStr)
+      }
+      (once = once, more = more)
+    }
   }
 }

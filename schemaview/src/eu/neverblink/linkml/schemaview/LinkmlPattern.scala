@@ -44,9 +44,13 @@ object LinkmlPattern {
   /** Like `String.endsWith`, but false when the suffix is escaped with a backslash. */
   private def endsWith(pattern: String, suffix: String): Boolean =
     pattern.endsWith(suffix) && {
-      val backslashes =
-        pattern.substring(0, pattern.length - suffix.length).reverseIterator.takeWhile(_ == '\\')
-      backslashes.size % 2 == 0
+      var i = pattern.length - suffix.length
+      var backslashes = 0
+      while (i > 0 && pattern.charAt(i - 1) == '\\') {
+        backslashes += 1
+        i -= 1
+      }
+      backslashes % 2 == 0
     }
 
   /** Whether there is a `|` outside any group or character class. */

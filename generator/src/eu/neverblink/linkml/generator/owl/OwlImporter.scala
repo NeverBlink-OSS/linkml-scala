@@ -11,6 +11,7 @@ import eu.neverblink.linkml.generator.options.{
 import eu.neverblink.linkml.generator.SchemaImporter
 import eu.neverblink.linkml.generator.owl.Axiom.*
 import eu.neverblink.linkml.generator.owl.ClassExpr.Bound
+import eu.neverblink.linkml.generator.owl.OwlAnnotationReader.Documentation
 import eu.neverblink.linkml.generator.owl.OwlAxiomIndex.*
 import eu.neverblink.linkml.generator.owl.config.OwlImportConfigs.{
   classStyle,
@@ -25,7 +26,6 @@ import eu.neverblink.linkml.generator.owl.OwlImportNames.*
 import eu.neverblink.linkml.metamodel.{Annotation as _, *}
 import eu.neverblink.linkml.rdf.*
 import eu.neverblink.linkml.runtime.*
-import eu.neverblink.linkml.runtime.FastUtils.*
 import eu.neverblink.linkml.schemaview.{
   Case,
   FileSystemImporter,
@@ -86,9 +86,10 @@ class OwlImporter(schemas: Importer = FileSystemImporter, base: String = "")
     }
     val read = OwlRdfReader.read(sink.triples)
     // Document prefixes override those from `sh:declare`. LinkML has no empty prefix, so skip it.
-    val prefixes = sink.namespaces.collect { case Namespace(p, ns) if p.nonEmpty => p -> ns }
-    val ontology = read.ontology.copy(prefixes = read.ontology.prefixes ++ prefixes)
-    importOntology(ontology, options, read.unparsed)
+    val prefixes = Vector.newBuilder[(String, String)]
+    prefixes.addAll(read.ontology.prefixes)
+    sink.namespaces.foreach(n => if (n.prefix.nonEmpty) prefixes.addOne(n.prefix -> n.name))
+    importOntology(read.ontology.copy(prefixes = prefixes.result()), options, read.unparsed)
   }
 
   override def importResult(
@@ -103,12 +104,12 @@ class OwlImporter(schemas: Importer = FileSystemImporter, base: String = "")
   }
 
   def importTriples(
-      triples: Seq[Triple],
+      triples: IndexedSeq[Triple],
       config: OwlImportConfig = OwlImportConfig(),
   ): Result =
     importTriples(triples, OwlImporterOptions(config = Some(config)))
 
-  def importTriples(triples: Seq[Triple], options: OwlImporterOptions): Result = {
+  def importTriples(triples: IndexedSeq[Triple], options: OwlImporterOptions): Result = {
     val read = OwlRdfReader.read(triples)
     importOntology(read.ontology, options, read.unparsed)
   }
@@ -125,8 +126,8 @@ class OwlImporter(schemas: Importer = FileSystemImporter, base: String = "")
       unparsed: Seq[Triple],
   ): Result = {
     val importer =
-      if options.schemas.isEmpty then schemas
-      else MapImporter(options.schemas.values.map(f => f.path -> f.content).toSeq*)
+      if (options.schemas.isEmpty) schemas
+      else MapImporter.from(options.schemas.valuesIterator.map(f => f.path -> f.content))
     Conversion(ontology, options, importer, base, unparsed).result
   }
 }
@@ -168,14 +169,36 @@ object OwlImporter {
     XmlSchema.pattern.value,
   )
 
-  private val regexMeta: Set[Char] = "\\^$.|?*+()[]{}".toSet
+  private val regexMeta = "\\^$.|?*+()[]{}"
 
   /** A LinkML pattern that matches exactly one of the values. */
-  private def alternationOf(values: Seq[String]): String =
-    values.map(quoteRegex).mkString("^(", "|", ")$")
+  private def alternationOf(values: Seq[Literal | LanguageLiteral]): String = {
+    val sb = new java.lang.StringBuilder("^(")
+    var first = true
+    values.foreach { v =>
+      if (!first) sb.append('|')
+      first = false
+      val value = literalValue(v)
+      var i = 0
+      while (i < value.length) {
+        val c = value.charAt(i)
+        if (regexMeta.indexOf(c) >= 0) sb.append('\\')
+        sb.append(c)
+        i += 1
+      }
+    }
+    sb.append(")$").toString
+  }
 
-  private def quoteRegex(value: String): String =
-    value.flatMap(c => if regexMeta.contains(c) then s"\\$c" else c.toString)
+  private def literalValue(v: Literal | LanguageLiteral): String = v match {
+    case l: Literal => l.value
+    case l: LanguageLiteral => l.value
+  }
+
+  private def literalType(v: Literal | LanguageLiteral): String = v match {
+    case l: Literal => l.datatype.value
+    case _: LanguageLiteral => Rdf.langString.value
+  }
 
   private val builtInTypes: Map[String, String] = Map(
     XmlSchema.string.value -> "string",
@@ -194,7 +217,8 @@ object OwlImporter {
 
   /** Other XSD datatypes become types of their own, based on these LinkML types. */
   private val derivedTypes: Map[String, String] = {
-    val integer = Seq(
+    val types = Map.newBuilder[String, String]
+    Array(
       "int",
       "long",
       "short",
@@ -207,8 +231,8 @@ object OwlImporter {
       "unsignedInt",
       "unsignedShort",
       "unsignedByte",
-    ).map(_ -> "integer")
-    val string = Seq(
+    ).foreach(local => types.addOne(XmlSchema.get(local).value -> "integer"))
+    Array(
       "normalizedString",
       "token",
       "language",
@@ -226,20 +250,36 @@ object OwlImporter {
       "base64Binary",
       // Not `uri`: a LinkML `uri` is an IRI in RDF, not an `xsd:anyURI` literal.
       "anyURI",
-    ).map(_ -> "string")
-    (integer ++ string :+ ("dateTimeStamp" -> "datetime"))
-      .map((local, base) => XmlSchema.get(local).value -> base).toMap ++ Map(
-      Rdf.get("XMLLiteral").value -> "string",
-      Rdf.get("HTML").value -> "string",
-      Rdf.get("JSON").value -> "string",
-      Owl.get("real").value -> "decimal",
-      Owl.get("rational").value -> "decimal",
-    )
+    ).foreach(local => types.addOne(XmlSchema.get(local).value -> "string"))
+    types.addOne(XmlSchema.get("dateTimeStamp").value -> "datetime")
+    types.addOne(Rdf.get("XMLLiteral").value -> "string")
+    types.addOne(Rdf.get("HTML").value -> "string")
+    types.addOne(Rdf.get("JSON").value -> "string")
+    types.addOne(Owl.get("real").value -> "decimal")
+    types.addOne(Owl.get("rational").value -> "decimal")
+    types.result()
   }
 
   private def isStandardVocabulary(iri: String): Boolean =
     iri.startsWith("http://www.w3.org/1999/02/22-rdf-syntax-ns#") ||
       iri.startsWith("http://www.w3.org/2000/01/rdf-schema#") || iri.startsWith(owlNs)
+
+  /** The IRI without a trailing `#` and then a trailing `/`. */
+  private def withoutSeparator(iri: String): String = {
+    var end = iri.length
+    if (end > 0 && iri.charAt(end - 1) == '#') end -= 1
+    if (end > 0 && iri.charAt(end - 1) == '/') end -= 1
+    iri.substring(0, end)
+  }
+
+  /** The part before the first `:`, or the whole text if it has none. */
+  private def beforeColon(text: String): String = {
+    val i = text.indexOf(':')
+    if (i < 0) text else text.substring(0, i)
+  }
+
+  /** Stands for a missing or unreadable length facet. */
+  private val noLength: Int = Int.MinValue
 
   /** The slot fields that an OWL range maps to. */
   private final case class SlotRange(
@@ -259,6 +299,22 @@ object OwlImporter {
         minimumLength.isEmpty && maximumLength.isEmpty && pattern.isEmpty
   }
 
+  /** A mapping with the key it is sorted by. */
+  private final class KeyedMapping(val key: String, val mapping: UriOrCurie)
+
+  private val byKey: java.util.Comparator[KeyedMapping] = (a, b) => a.key.compareTo(b.key)
+
+  /** A property's kind, and its place in the order of properties. */
+  private final class PropertyInfo(var kind: EntityKind) {
+    var order: Int = Int.MaxValue
+  }
+
+  /** The members of an enum by its class IRI, and whether the members are classes. */
+  private type EnumMembers = (members: collection.Seq[String], classes: Boolean)
+
+  /** The `is_a` parent of an element, or `null` if it has none, and its mixins, by name. */
+  private type Parents = (isA: String, mixins: collection.Seq[String])
+
   private final class Conversion(
       ontology: Ontology,
       options: OwlImporterOptions,
@@ -268,14 +324,25 @@ object OwlImporter {
   ) {
     private val config = {
       val config = options.config.getOrElse(OwlImportConfig())
-      options.schemaId.fold(config)(id => config.copy(schemaId = Some(id)))
+      if (options.schemaId.isDefined) config.copy(schemaId = options.schemaId) else config
     }
 
-    private val warnings = mutable.LinkedHashMap.empty[String, mutable.ArrayBuffer[String]]
+    /** Warning details by kind. */
+    private val warnings = mutable.HashMap.empty[String, mutable.ArrayBuffer[String]]
+
+    /** The kinds of [[warnings]], in the order of their first warning. */
+    private val warningKinds = mutable.ArrayBuffer.empty[String]
 
     /** Warnings are grouped by kind to keep the report short. */
-    private def warn(kind: String, detail: String): Unit =
-      warnings.getOrElseUpdate(kind, mutable.ArrayBuffer.empty) += detail
+    private def warn(kind: String, detail: String): Unit = {
+      var details = warnings.getOrElse(kind, null)
+      if (details eq null) {
+        details = mutable.ArrayBuffer.empty
+        warnings.update(kind, details)
+        warningKinds.addOne(kind)
+      }
+      details.addOne(detail)
+    }
 
     private val index = OwlAxiomIndex(ontology.axioms)
     import index.*
@@ -285,617 +352,990 @@ object OwlImporter {
     private def isDatatype(iri: String): Boolean =
       isDeclared(iri, EntityKind.Datatype) || OwlRdfReader.isBuiltInDatatype(iri)
 
+    /** Entries of an index, or an empty sequence if there are none. */
+    private def entriesOf[A](
+        index: mutable.HashMap[String, mutable.ArrayBuffer[A]],
+        key: String,
+    ): collection.IndexedSeq[A] = {
+      val entries = index.getOrElse(key, null)
+      if (entries ne null) entries else Vector.empty
+    }
+
     /** Classes that are declared or used. Declarations of RDF, RDFS and OWL terms are ignored
       * (FOAF, for example, declares `rdfs:Class`).
       */
-    private val allClasses: Seq[String] =
-      (axioms.collect {
-        case Declaration(EntityKind.Class, iri, _) if !isStandardVocabulary(iri) => iri
-      } ++ expressions.flatMap(classesIn)).distinct.filterNot(wellKnownClasses)
-        .filterNot(isDatatype)
+    private val allClasses: mutable.ArrayBuffer[String] = {
+      val out = mutable.ArrayBuffer.empty[String]
+      val seen = mutable.HashSet.empty[String]
+      def add(c: String): Unit =
+        if (seen.add(c) && !wellKnownClasses(c) && !isDatatype(c)) out.addOne(c)
+      axioms.foreach {
+        case d: Declaration =>
+          if (d.kind == EntityKind.Class && !isStandardVocabulary(d.iri)) add(d.iri)
+        case _ =>
+      }
+      expressions.foreach(e => foreachClassIn(e)(add))
+      out
+    }
+
+    /** The ontology IRI without a trailing `#` or `/`, or `null` if it has none. */
+    private val ontologyNamespace: String =
+      if (ontology.iri.isDefined) withoutSeparator(ontology.iri.get) else null
 
     /** True if the namespace is the ontology IRI, ignoring a trailing `#` or `/`. */
     private def isOntologyNamespace(namespace: String): Boolean =
-      ontology.iri.exists(o =>
-        namespace.stripSuffix("#").stripSuffix("/") == o.stripSuffix("#").stripSuffix("/"),
-      )
+      (ontologyNamespace ne null) && withoutSeparator(namespace) == ontologyNamespace
 
-    /** Each property and its kind, taken from its declaration or else from how it is used. */
-    private val propertyKinds: VectorMap[String, EntityKind] = {
-      val out = mutable.LinkedHashMap.empty[String, EntityKind]
+    /** Each property's kind, taken from its declaration or else from how it is used, and its place
+      * in [[properties]].
+      */
+    private val propertyKinds = mutable.HashMap.empty[String, PropertyInfo]
+
+    /** The kind of a property, or `null` if it is not one. */
+    private def kindOf(p: String): EntityKind = {
+      val info = propertyKinds.getOrElse(p, null)
+      if (info ne null) info.kind else null
+    }
+
+    /** The properties in [[propertyKinds]], in order. */
+    private val properties = mutable.ArrayBuffer.empty[String]
+
+    {
+      val order = mutable.ArrayBuffer.empty[String]
+      def put(p: String, kind: EntityKind): Unit = {
+        val info = propertyKinds.getOrElse(p, null)
+        if (info ne null) info.kind = kind
+        else {
+          propertyKinds.update(p, new PropertyInfo(kind))
+          order.addOne(p)
+        }
+      }
       axioms.foreach {
-        case Declaration(k @ (EntityKind.ObjectProperty | EntityKind.DataProperty), iri, _) =>
-          out(iri) = k
+        case d: Declaration =>
+          if (d.kind == EntityKind.ObjectProperty || d.kind == EntityKind.DataProperty) {
+            put(d.iri, d.kind)
+          }
         case _ =>
       }
-      val used = expressions.flatMap(propertiesIn) ++ axioms.collect {
-        case Range(p, r, _) => p -> r.isInstanceOf[DataRange]
-        case Domain(p, _, _) => p -> false
-        case Characteristic(p, _, _) => p -> false
-        case InverseProperties(a, _, _) => a -> false
-        // An undeclared subproperty, like Hydra's `writeable`, has its parent's kind.
-        case SubPropertyOf(a, sup, _) => a -> out.get(sup).contains(EntityKind.DataProperty)
+      // The used properties, and those used as a data property somewhere.
+      val used = mutable.HashSet.empty[String]
+      val usedAsData = mutable.HashSet.empty[String]
+      def use(p: String, data: Boolean): Unit = {
+        used.addOne(p)
+        if (data) usedAsData.addOne(p)
       }
+      expressions.foreach(e => foreachPropertyIn(e)(use))
+      axioms.foreach {
+        case a: Range => use(a.property, a.range.isInstanceOf[DataRange])
+        case a: Domain => use(a.property, false)
+        case a: Characteristic => use(a.property, false)
+        case a: InverseProperties => use(a.first, false)
+        // An undeclared subproperty, like Hydra's `writeable`, has its parent's kind.
+        case a: SubPropertyOf =>
+          use(a.sub, kindOf(a.sup) == EntityKind.DataProperty)
+        case _ =>
+      }
+      // Undeclared properties are added in order of their IRIs. That order doesn't depend on the
+      // order of the axioms, so the OWL generated from the schema gives the same schema.
       // Hydra gives its datatype `Rfc6570Template` a range, which doesn't make it a property.
-      used.groupMap(_._1)(_._2).foreach { (p, data) =>
-        if !out.contains(p) && !isDeclared(p, EntityKind.AnnotationProperty) &&
+      val undeclared = mutable.ArrayBuffer.empty[String]
+      used.foreach { p =>
+        if (
+          !propertyKinds.contains(p) && !isDeclared(p, EntityKind.AnnotationProperty) &&
           !isDeclared(p, EntityKind.Datatype)
-        then
-          out(p) =
-            if data.contains(true) then EntityKind.DataProperty else EntityKind.ObjectProperty
+        ) undeclared.addOne(p)
+      }
+      val sorted = undeclared.toArray
+      java.util.Arrays.sort(sorted, Ordering.String)
+      sorted.foreach { p =>
+        put(p, if (usedAsData(p)) EntityKind.DataProperty else EntityKind.ObjectProperty)
       }
       // An undeclared parent property gets its child's kind, so the child can keep it as a parent.
       // Skip parents used as annotations, or they would end up with two kinds.
-      val annotationProperties = annotationsOf.values.flatten.map(_.property).toSet ++
-        ontology.annotations.map(_.property)
-      def addParents(): Unit = {
-        val added = axioms.collect {
-          case SubPropertyOf(sub, sup, _)
-              if !out.contains(sup) && out.get(sub).exists(_ != EntityKind.AnnotationProperty) &&
-                !isDeclared(sup, EntityKind.AnnotationProperty) && !annotationProperties(sup) =>
-            sup -> out(sub)
+      val annotationProperties = mutable.HashSet.empty[String]
+      annotationsOf.valuesIterator.foreach(_.foreach(a => annotationProperties.addOne(a.property)))
+      ontology.annotations.foreach(a => annotationProperties.addOne(a.property))
+      val added = mutable.ArrayBuffer.empty[(property: String, kind: EntityKind)]
+      while ({
+        added.clear()
+        axioms.foreach {
+          case a: SubPropertyOf =>
+            val sup = a.sup
+            if (!propertyKinds.contains(sup)) {
+              val kind = kindOf(a.sub)
+              if (
+                (kind ne null) && kind != EntityKind.AnnotationProperty &&
+                !isDeclared(sup, EntityKind.AnnotationProperty) && !annotationProperties(sup)
+              ) added.addOne((property = sup, kind = kind))
+            }
+          case _ =>
         }
-        added.foreach((sup, kind) => out.getOrElseUpdate(sup, kind))
-        if added.nonEmpty then addParents()
-      }
-      addParents()
+        added.foreach(e => if (!propertyKinds.contains(e.property)) put(e.property, e.kind))
+        added.nonEmpty
+      }) ()
       // Keep the ontology's own annotation properties only if it says something about them. A bare
       // declaration is usually just there for OWL 2 DL.
-      val described = annotationsOf.keySet ++ axioms.collect {
-        case SubPropertyOf(sub, _, _) => sub
-        case Domain(p, _, _) => p
-        case Range(p, _, _) => p
+      val described = mutable.HashSet.empty[String]
+      described.addAll(annotationsOf.keysIterator)
+      axioms.foreach {
+        case a: SubPropertyOf => described.addOne(a.sub)
+        case a: Domain => described.addOne(a.property)
+        case a: Range => described.addOne(a.property)
+        case _ =>
       }
       // Skip metadata vocabulary properties, unless the ontology is that vocabulary (e.g. SKOS).
       def ownAnnotationProperty(iri: String) =
-        !out.contains(iri) && described(iri) &&
-          (!metadataVocabularies.contains(namespaceOf(iri)) || isOntologyNamespace(
-            namespaceOf(iri),
-          ))
+        !propertyKinds.contains(iri) && described(iri) && {
+          val ns = namespaceOf(iri)
+          !metadataVocabularies.contains(ns) || isOntologyNamespace(ns)
+        }
       axioms.foreach {
-        case Declaration(EntityKind.AnnotationProperty, iri, _) if ownAnnotationProperty(iri) =>
-          out(iri) = EntityKind.AnnotationProperty
+        case d: Declaration =>
+          if (d.kind == EntityKind.AnnotationProperty && ownAnnotationProperty(d.iri)) {
+            put(d.iri, EntityKind.AnnotationProperty)
+          }
         case _ =>
       }
       // RDF, RDFS and OWL properties are defined by their specs, so they never become slots.
-      VectorMap.from(out.filterNot((p, _) => isStandardVocabulary(p)))
+      order.foreach { p =>
+        if (isStandardVocabulary(p)) propertyKinds.remove(p)
+        else {
+          propertyKinds(p).order = properties.length
+          properties.addOne(p)
+        }
+      }
     }
 
     // Enums
 
     /** Enums by class IRI, with their members and whether the members are classes. */
-    private val enumMembers: VectorMap[String, (Seq[String], Boolean)] = {
-      val out = mutable.LinkedHashMap.empty[String, (Seq[String], Boolean)]
+    private val enumMembers = mutable.HashMap.empty[String, EnumMembers]
+
+    /** The classes in [[enumMembers]], in order. */
+    private val enumClasses = mutable.ArrayBuffer.empty[String]
+
+    private def addEnum(c: String, members: collection.Seq[String], classes: Boolean): Unit = {
+      if (!enumMembers.contains(c)) enumClasses.addOne(c)
+      enumMembers.update(c, (members = members, classes = classes))
+    }
+
+    {
       allClasses.foreach { c =>
-        equivalents.getOrElse(c, Nil).collectFirst { case (a, ClassExpr.OneOf(individuals)) =>
-          (a, individuals)
-        }.foreach { (a, individuals) =>
-          take(a)
-          out(c) = (individuals, false)
+        val entry = entriesOf(equivalents, c).find(_.other.isInstanceOf[ClassExpr.OneOf])
+        if (entry.isDefined) {
+          take(entry.get.axiom)
+          addEnum(c, entry.get.other.asInstanceOf[ClassExpr.OneOf].individuals, classes = false)
         }
       }
       // A union of plain subclasses becomes an enum whose values are those classes.
-      allClasses.filterNot(out.contains).foreach { c =>
-        equivalents.getOrElse(c, Nil).collectFirst {
-          case (a, ClassExpr.UnionOf(members)) if members.forall {
-                case ClassExpr.Named(m) => isPlainSubclass(m, c)
-                case _ => false
-              } =>
-            (a, members.collect { case ClassExpr.Named(m) => m })
-        }.foreach { (a, members) =>
-          take(a)
-          members.foreach(m => subClassOf(m).foreach((s, _) => take(s)))
-          out(c) = (members, true)
+      allClasses.foreach { c =>
+        if (!enumMembers.contains(c)) {
+          val entry = entriesOf(equivalents, c).find { e =>
+            e.other match {
+              case u: ClassExpr.UnionOf =>
+                u.operands.forall {
+                  case n: ClassExpr.Named => isPlainSubclass(n.iri, c)
+                  case _ => false
+                }
+              case _ => false
+            }
+          }
+          if (entry.isDefined) {
+            take(entry.get.axiom)
+            val members = mutable.ArrayBuffer.empty[String]
+            entry.get.other.asInstanceOf[ClassExpr.UnionOf].operands.foreach {
+              case n: ClassExpr.Named => members.addOne(n.iri)
+              case _ =>
+            }
+            members.foreach(m => subClassOf(m).foreach(e => take(e.axiom)))
+            addEnum(c, members, classes = true)
+          }
         }
       }
-      if config.enumsFromIndividuals then {
-        val usedAsRange = (ranges.values.flatten.map(_._2) ++ expressions.flatMap {
-          case ClassExpr.AllValuesFrom(_, f) => Seq(f)
-          case ClassExpr.SomeValuesFrom(_, f) => Seq(f)
-          case _ => Nil
-        }).collect { case ClassExpr.Named(c) => c }.toSet ++
-          // Schema.org gives ranges with `schema:rangeIncludes`.
-          annotationsOf.values.flatten.collect {
-            case Annotation(p, Iri(c)) if rangeIncludes(p) => c
-          }
-        val members = classAssertions.collect { case ClassAssertion(ClassExpr.Named(c), i, _) =>
-          c -> i
+      if (config.enumsFromIndividuals) {
+        val usedAsRange = mutable.HashSet.empty[String]
+        def useAsRange(f: Filler): Unit = f match {
+          case n: ClassExpr.Named => usedAsRange.addOne(n.iri)
+          case _ =>
         }
-          .groupMap(_._1)(_._2)
-        // Subclasses of a range count too. E.g. Schema.org's `USNonprofitType` is a subclass of
-        // `NonprofitType`, which is used as a range.
-        def namedAncestors(c: String): Set[String] = {
-          val out = mutable.LinkedHashSet.empty[String]
-          def visit(x: String): Unit = subClassOf.getOrElse(x, Nil).foreach {
-            case (_, ClassExpr.Named(p)) => if out.add(p) then visit(p)
+        ranges.valuesIterator.foreach(_.foreach(e => useAsRange(e.range)))
+        expressions.foreach {
+          case e: ClassExpr.AllValuesFrom => useAsRange(e.filler)
+          case e: ClassExpr.SomeValuesFrom => useAsRange(e.filler)
+          case _ =>
+        }
+        // Schema.org gives ranges with `schema:rangeIncludes`.
+        annotationsOf.valuesIterator.foreach(_.foreach { a =>
+          if (rangeIncludes(a.property)) {
+            a.value match {
+              case i: Iri => usedAsRange.addOne(i.value)
+              case _ =>
+            }
+          }
+        })
+        val members = mutable.HashMap.empty[String, mutable.ArrayBuffer[String]]
+        classAssertions.foreach { a =>
+          a.cls match {
+            case n: ClassExpr.Named =>
+              members.getOrElseUpdate(n.iri, mutable.ArrayBuffer.empty).addOne(a.individual)
             case _ =>
           }
-          visit(c)
-          out.toSet
         }
-        members.toSeq.sortBy(_._1).foreach { (c, individuals) =>
-          if !out.contains(c) && (usedAsRange(c) || namedAncestors(c).exists(usedAsRange)) &&
-            isOnlyASet(c)
-          then out(c) = (individuals.distinct, false)
+        // Subclasses of a range count too. E.g. Schema.org's `USNonprofitType` is a subclass of
+        // `NonprofitType`, which is used as a range.
+        def hasNamedAncestorUsedAsRange(c: String): Boolean = {
+          val seen = mutable.HashSet.empty[String]
+          val stack = mutable.ArrayBuffer(c)
+          var found = false
+          while (!found && stack.nonEmpty) {
+            val sups = entriesOf(subClassOf, stack.remove(stack.length - 1))
+            var i = 0
+            while (!found && i < sups.length) {
+              sups(i).sup match {
+                case n: ClassExpr.Named =>
+                  if (seen.add(n.iri)) {
+                    found = usedAsRange(n.iri)
+                    stack.addOne(n.iri)
+                  }
+                case _ =>
+              }
+              i += 1
+            }
+          }
+          found
+        }
+        val classes = members.keysIterator.toArray
+        java.util.Arrays.sort(classes, Ordering.String)
+        classes.foreach { c =>
+          if (
+            !enumMembers.contains(c) &&
+            (usedAsRange(c) || hasNamedAncestorUsedAsRange(c)) && isOnlyASet(c)
+          ) {
+            val individuals = mutable.ArrayBuffer.empty[String]
+            val seen = mutable.HashSet.empty[String]
+            members(c).foreach(i => if (seen.add(i)) individuals.addOne(i))
+            addEnum(c, individuals, classes = false)
+          }
         }
       }
-      VectorMap.from(out)
     }
 
     /** True if the only thing said about `m` is that it is a subclass of `c`. */
-    private def isPlainSubclass(m: String, c: String): Boolean =
-      subClassOf.getOrElse(m, Nil).map(_._2) == Seq(ClassExpr.Named(c)) &&
-        !namedSubclasses.contains(m) && !domainClasses(m) && !inEquivalence(m)
+    private def isPlainSubclass(m: String, c: String): Boolean = {
+      val sups = subClassOf.getOrElse(m, null)
+      (sups ne null) && sups.length == 1 && (sups(0).sup match {
+        case n: ClassExpr.Named => n.iri == c
+        case _ => false
+      }) && !namedSubclasses.contains(m) && !domainClasses(m) && !inEquivalence(m)
+    }
 
     /** True if nothing is said about the class's members, so it can become an enum. Named parents
-      * are allowed.
+      * are allowed, and so are equivalent named classes, which just become mappings.
       */
     private def isOnlyASet(c: String): Boolean =
-      subClassOf.getOrElse(c, Nil).forall(_._2.isInstanceOf[ClassExpr.Named]) &&
-        !namedSubclasses.contains(c) && !domainClasses(c) && onlyNamedEquivalents(c)
+      entriesOf(subClassOf, c).forall(_.sup.isInstanceOf[ClassExpr.Named]) &&
+        !namedSubclasses.contains(c) && !domainClasses(c) && !inExpressionEquivalence(c)
 
-    /** True if the class is only equivalent to named classes, which just become mappings. */
-    private def onlyNamedEquivalents(c: String): Boolean =
-      !inEquivalence(c) || axioms.forall {
-        case EquivalentClasses(ops, _) if ops.contains(ClassExpr.Named(c)) =>
-          ops.forall(_.isInstanceOf[ClassExpr.Named])
-        case _ => true
-      }
+    /** Individuals that are values of an enum. */
+    private val enumIndividuals = mutable.HashSet.empty[String]
 
-    private val enumIndividuals: Set[String] =
-      enumMembers.values.filterNot(_._2).flatMap(_._1).toSet
+    /** Classes that are values of an enum. */
+    private val enumClassMembers = mutable.HashSet.empty[String]
+
+    enumMembers.valuesIterator.foreach { m =>
+      (if (m.classes) enumClassMembers else enumIndividuals).addAll(m.members)
+    }
 
     /** If the IRI is also a permissible value (as in Schema.org and D3FEND), its `skos:notation`
       * belongs to the value, so it is left out here.
       */
-    private def termDocumentation(iri: String) =
-      if !enumIndividuals(iri) then reader.documentation(iri)
-      else
-        reader.documentation(
-          annotationsOf.getOrElse(iri, Nil).filterNot(_.property == notationProperty),
-        )
+    private def termDocumentation(iri: String): Documentation =
+      if (!enumIndividuals(iri)) reader.documentation(iri)
+      else {
+        val annotations = mutable.ArrayBuffer.empty[Annotation]
+        entriesOf(annotationsOf, iri)
+          .foreach(a => if (a.property != notationProperty) annotations.addOne(a))
+        reader.documentation(annotations)
+      }
 
-    private val classes: Seq[String] =
-      allClasses.filterNot(c =>
-        enumMembers.contains(c) || enumMembers.values.exists(m => m._2 && m._1.contains(c)),
+    private val classes: mutable.ArrayBuffer[String] = {
+      val out = mutable.ArrayBuffer.empty[String]
+      allClasses.foreach(c =>
+        if (!enumMembers.contains(c) && !enumClassMembers.contains(c)) out.addOne(c),
       )
+      out
+    }
 
     // Datatypes
 
-    private val configuredTypes: Map[String, String] =
-      config.datatypeMap.map((k, v) => expand(k, ontology.prefixes ++ config.prefixMap) -> v)
+    /** The ontology's and the config's prefixes, as prefix and namespace. */
+    private val configPrefixes: mutable.ArrayBuffer[(String, String)] = {
+      val prefixes = mutable.ArrayBuffer.from(ontology.prefixes)
+      config.prefixMap.foreach(prefixes.addOne)
+      prefixes
+    }
+
+    private val configuredTypes: mutable.HashMap[String, String] = {
+      val types = mutable.HashMap.empty[String, String]
+      config.datatypeMap.foreachEntry((k, v) => types.update(expand(k, configPrefixes), v))
+      types
+    }
 
     /** Datatypes that are declared, defined or used in a range, minus those LinkML already has. */
-    private val datatypes: Seq[String] = {
-      (axioms.collect { case Declaration(EntityKind.Datatype, iri, _) => iri } ++
-        axioms.flatMap {
-          case Range(_, r, _) => datatypesIn(r)
-          case DatatypeDefinition(d, r, _) => d +: datatypesIn(r)
-          case _ => Nil
-        } ++ expressions.flatMap(datatypesIn)).distinct
+    private val datatypes: mutable.ArrayBuffer[String] = {
+      val out = mutable.ArrayBuffer.empty[String]
+      val seen = mutable.HashSet.empty[String]
+      def add(d: String): Unit =
         // ODRL puts classes in data ranges. Those stay classes.
-        .filterNot(d =>
-          d == Rdfs.Literal.value || builtInTypes.contains(d) || configuredTypes.contains(d) ||
-            isDeclared(d, EntityKind.Class),
-        )
+        if (
+          seen.add(d) && d != Rdfs.Literal.value && !builtInTypes.contains(d) &&
+          !configuredTypes.contains(d) && !isDeclared(d, EntityKind.Class)
+        ) out.addOne(d)
+      axioms.foreach {
+        case d: Declaration => if (d.kind == EntityKind.Datatype) add(d.iri)
+        case _ =>
+      }
+      axioms.foreach {
+        case a: Range => foreachDatatypeIn(a.range)(add)
+        case a: DatatypeDefinition =>
+          add(a.datatype)
+          foreachDatatypeIn(a.range)(add)
+        case _ =>
+      }
+      expressions.foreach(e => foreachDatatypeIn(e)(add))
+      out
     }
 
     // Every datatype is a set of literals, so `rdfs:subClassOf rdfs:Literal` says nothing.
-    subClassOf.foreach { (d, sups) =>
-      if isDatatype(d) then
-        sups.foreach {
-          case (a, ClassExpr.Named(p)) if p == Rdfs.Literal.value => take(a)
-          case _ =>
+    subClassOf.foreachEntry { (d, sups) =>
+      if (isDatatype(d)) {
+        sups.foreach { e =>
+          e.sup match {
+            case n: ClassExpr.Named => if (n.iri == Rdfs.Literal.value) take(e.axiom)
+            case _ =>
+          }
         }
+      }
     }
 
-    /** The parent datatype of a datatype, from `rdfs:subClassOf`. */
-    private def parentDatatype(iri: String): Option[String] =
-      subClassOf.getOrElse(iri, Nil).collectFirst {
-        case (a, ClassExpr.Named(p)) if p != Rdfs.Literal.value && isDatatype(p) =>
-          take(a)
-          p
+    /** The parent datatype of a datatype, from `rdfs:subClassOf`, or `null` if it has none. */
+    private def parentDatatype(iri: String): String = {
+      val sups = entriesOf(subClassOf, iri)
+      var parent: String = null
+      var i = 0
+      while ((parent eq null) && i < sups.length) {
+        val e = sups(i)
+        e.sup match {
+          case n: ClassExpr.Named =>
+            if (n.iri != Rdfs.Literal.value && isDatatype(n.iri)) {
+              take(e.axiom)
+              parent = n.iri
+            }
+          case _ =>
+        }
+        i += 1
       }
+      parent
+    }
 
     // Prefixes and names
 
-    private val naming = OwlImportNames(
-      ontology,
-      config,
-      ownTerms = (classes ++ enumMembers.keys ++ propertyKinds.keys).filter(declared.contains),
-      allTerms =
-        allClasses ++ propertyKinds.keys ++ datatypes ++ enumMembers.values.flatMap(_._1) ++
-          annotationsOf.values.flatten.map(_.property) ++ ontology.annotations.map(_.property),
-      warn,
-    )
+    private val naming = {
+      val ownTerms = mutable.ArrayBuffer.empty[String]
+      def own(t: String): Unit = if (declared.contains(t)) ownTerms.addOne(t)
+      classes.foreach(own)
+      enumClasses.foreach(own)
+      properties.foreach(own)
+      val allTerms = mutable.ArrayBuffer.empty[String]
+      allTerms.addAll(allClasses)
+      allTerms.addAll(properties)
+      allTerms.addAll(datatypes)
+      enumClasses.foreach(e => allTerms.addAll(enumMembers(e).members))
+      annotationsOf.valuesIterator.foreach(_.foreach(a => allTerms.addOne(a.property)))
+      ontology.annotations.foreach(a => allTerms.addOne(a.property))
+      OwlImportNames(ontology, config, ownTerms, allTerms, warn)
+    }
     import naming.{curie, defaultNamespace, ensurePrefix, explicitIri, names, uri}
 
-    /** The LinkML schemas that `owl:imports` map to, for the schema's `imports`.
-      */
-    private val importRefs: Seq[String] = ontology.imports.flatMap { i =>
-      config.importMap.get(i).orElse {
-        warn("Import that is not mapped to a LinkML schema (see `imports` in the config)", i)
-        None
+    /** The LinkML schemas that `owl:imports` map to, for the schema's `imports`, sorted. */
+    private val importRefs: Array[String] = {
+      val importMap = config.importMap
+      val refs = mutable.HashSet.empty[String]
+      ontology.imports.foreach { i =>
+        val ref = importMap.getOrElse(i, null)
+        if (ref ne null) refs.addOne(ref)
+        else warn("Import that is not mapped to a LinkML schema (see `imports` in the config)", i)
       }
-    }.distinct.sorted
+      val sorted = refs.toArray
+      java.util.Arrays.sort(sorted, Ordering.String)
+      sorted
+    }
 
     /** An import from the config, with a CURIE expanded as if the schema was loaded: with the
       * config's prefixes, the prefixes that the schema can declare, and those of the metamodel.
       */
     private def importOf(ref: String): UriOrCurie = UriOrCurie.expanded(ref, importPrefixes)
 
-    private lazy val importPrefixes: PrefixMap =
-      PrefixMap(overrides = config.prefixMap.toSeq ++ naming.all, defaults = Prefixes.map)
+    private lazy val importPrefixes: PrefixMap = {
+      val overrides = Vector.newBuilder[(String, String)]
+      overrides.addAll(config.prefixMap)
+      overrides.addAll(naming.all)
+      PrefixMap(overrides = overrides.result(), defaults = Prefixes.map)
+    }
 
-    /** Mappings without duplicates, in the order of their CURIEs. */
-    private def sorted(mappings: Seq[UriOrCurie]): Seq[UriOrCurie] =
-      mappings.distinctBy(_.original).sortBy(m => curie(m.original, record = false))
+    /** The mappings of both sequences without duplicates, in the order of their CURIEs. */
+    private def sorted(
+        mappings: collection.Seq[UriOrCurie],
+        more: collection.Seq[UriOrCurie],
+    ): Seq[UriOrCurie] = {
+      val seen = mutable.HashSet.empty[String]
+      val items = mutable.ArrayBuffer.empty[KeyedMapping]
+      def add(m: UriOrCurie): Unit =
+        if (seen.add(m.original)) items.addOne(KeyedMapping(curie(m.original, record = false), m))
+      mappings.foreach(add)
+      more.foreach(add)
+      val array = items.toArray
+      // A stable sort, so mappings with the same CURIE keep their order.
+      java.util.Arrays.sort(array, byKey)
+      val out = Vector.newBuilder[UriOrCurie]
+      array.foreach(e => out.addOne(e.mapping))
+      out.result()
+    }
 
     /** Slot ranges from the imported schemas, by slot IRI. */
-    private val importedRanges = mutable.Map.empty[String, SlotRange]
+    private val importedRanges = mutable.HashMap.empty[String, SlotRange]
 
     /** Slots of each class in the imported schemas, by class IRI. */
-    private val importedSlots = mutable.Map.empty[String, Set[String]]
+    private val importedSlots = mutable.HashMap.empty[String, mutable.HashSet[String]]
 
     /** Terms defined in the imported schemas, by IRI, with their kind and name. The schema refers
       * to them by that name instead of defining its own.
       */
-    private val imported: Map[String, (NameGroup, String)] =
-      importRefs.flatMap { ref =>
-        termsOf(ref) match {
-          case Right(terms) => terms
-          case Left(reason) =>
-            warn(
-              "Imported LinkML schema that could not be read, so its terms are copied in",
-              s"$ref: $reason",
-            )
-            Nil
-        }
-      }.toMap
+    private val imported = mutable.HashMap.empty[String, (group: NameGroup, name: String)]
 
-    private def termsOf(ref: String): Either[String, Seq[(String, (NameGroup, String))]] = {
+    importRefs.foreach { ref =>
+      val reason = addTermsOf(ref)
+      if (reason ne null) {
+        warn(
+          "Imported LinkML schema that could not be read, so its terms are copied in",
+          s"$ref: $reason",
+        )
+      }
+    }
+
+    /** Adds the terms of an imported schema to [[imported]], or returns why it can't be read. */
+    private def addTermsOf(ref: String): String = {
+      val prefixes = VectorMap.newBuilder[String, Prefix]
+      config.prefixMap.foreachEntry((p, ns) => prefixes.addOne(p -> Prefix(p, Uri(ns))))
       val root = SchemaDefinition(
         id = Uri("urn:linkml-scala:owl-import"),
         name = "owl_import",
-        prefixes = VectorMap.from(config.prefixMap.map((p, ns) => p -> Prefix(p, Uri(ns)))),
+        prefixes = prefixes.result(),
         imports = Seq(importOf(ref)),
       )
       try
-        SchemaView.loadImports(root, base, schemas).left.map {
-          case e: SchemaImportError => e.reason
-          case e: SchemaParseError => e.parserMessage
-        }.map { schemas =>
-          val sv = SchemaView(root +: schemas)
-          def own(el: eu.neverblink.linkml.schemaview.ElementView[?, ?]) =
-            !el.definingSchema.id.original.startsWith("https://w3id.org/linkml/")
-          sv.slotDefinitions.values.filter(own).foreach { s =>
-            s.ancestorsWithSelf.map(_.slot).find(e => e.range.isDefined || e.anyOf.nonEmpty)
-              .foreach { e =>
-                importedRanges(s.uriStr) = SlotRange(
-                  range = e.range.map(_.value),
-                  anyOf = e.anyOf.flatMap(_.range).map(_.value),
-                )
+        SchemaView.loadImports(root, base, schemas).fold(
+          {
+            case e: SchemaImportError => e.reason
+            case e: SchemaParseError => e.parserMessage
+          },
+          loaded => {
+            val sv = SchemaView(root +: loaded)
+            def own(el: eu.neverblink.linkml.schemaview.ElementView[?, ?]) =
+              !el.definingSchema.id.original.startsWith("https://w3id.org/linkml/")
+            sv.slotDefinitions.valuesIterator.foreach { s =>
+              if (own(s)) {
+                val it = s.ancestorsWithSelf.iterator
+                var found = false
+                while (!found && it.hasNext) {
+                  val e = it.next().slot
+                  if (e.range.isDefined || e.anyOf.nonEmpty) {
+                    found = true
+                    val anyOf = Vector.newBuilder[String]
+                    e.anyOf.foreach(x => if (x.range.isDefined) anyOf.addOne(x.range.get.value))
+                    importedRanges.update(
+                      s.uriStr,
+                      SlotRange(range = e.range.map(_.value), anyOf = anyOf.result()),
+                    )
+                  }
+                }
               }
-          }
-          sv.classes.values.filter(own).foreach { c =>
-            importedSlots(c.uriStr) = c.derivedAttributes.values.map(_.uriStr).toSet
-          }
-          sv.classes.values.filter(own).map(c => c.uriStr -> (NameGroup.Class, c.name)).toSeq ++
-            sv.enums.values.filter(own).map(e => e.uriStr -> (NameGroup.Class, e.name)) ++
-            sv.types.values.filter(own).map(t => t.uriStr -> (NameGroup.Type, t.name)) ++
-            sv.slotDefinitions.values.filter(own).map(s => s.uriStr -> (NameGroup.Slot, s.name))
-        }
-      catch { case NonFatal(e) => Left(String.valueOf(e.getMessage)) }
+            }
+            sv.classes.valuesIterator.foreach { c =>
+              if (own(c)) {
+                val slots = mutable.HashSet.empty[String]
+                c.derivedAttributes.valuesIterator.foreach(a => slots.addOne(a.uriStr))
+                importedSlots.update(c.uriStr, slots)
+              }
+            }
+            sv.classes.valuesIterator.foreach { c =>
+              if (own(c)) imported.update(c.uriStr, (group = NameGroup.Class, name = c.name))
+            }
+            sv.enums.valuesIterator.foreach { e =>
+              if (own(e)) imported.update(e.uriStr, (group = NameGroup.Class, name = e.name))
+            }
+            sv.types.valuesIterator.foreach { t =>
+              if (own(t)) imported.update(t.uriStr, (group = NameGroup.Type, name = t.name))
+            }
+            sv.slotDefinitions.valuesIterator.foreach { s =>
+              if (own(s)) imported.update(s.uriStr, (group = NameGroup.Slot, name = s.name))
+            }
+            null
+          },
+        )
+      catch { case e: Throwable if NonFatal(e) => String.valueOf(e.getMessage) }
     }
 
-    imported.foreach((iri, term) => naming.reserve(iri, term._2, term._1))
-    naming.name(classes ++ enumMembers.keys, NameGroup.Class, config.classStyle)
-    naming.name(propertyKinds.keys.toSeq, NameGroup.Slot, config.slotStyle)
-    naming.name(datatypes, NameGroup.Type, NameStyle.Keep)
+    imported.foreachEntry((iri, term) => naming.reserve(iri, term.name, term.group))
+
+    {
+      val classesAndEnums = mutable.ArrayBuffer.from(classes)
+      classesAndEnums.addAll(enumClasses)
+      naming.name(classesAndEnums, NameGroup.Class, config.classStyle)
+      naming.name(properties, NameGroup.Slot, config.slotStyle)
+      naming.name(datatypes, NameGroup.Type, NameStyle.Keep)
+    }
 
     private val reader = OwlAnnotationReader(annotationsOf, ontology.annotations, config, naming)
     import reader.documentation
 
     // Types
 
-    private lazy val types: Seq[TypeDefinition] = datatypes.filterNot(imported.contains).map {
-      iri =>
-        val name = names(iri)
-        val (metadata, annotations) = documentation(iri)
-        ensurePrefix(iri)
-        val (typeof, facets, valuePattern) = datatypeDefinitions.get(iri).map(take) match {
-          case Some(DatatypeDefinition(_, DataRange.Restriction(base, facets), _)) =>
-            (typeNameFor(base), facets, None)
-          case Some(DatatypeDefinition(_, DataRange.Datatype(base), _)) =>
-            (typeNameFor(base), Nil, None)
+    private lazy val types: mutable.ArrayBuffer[TypeDefinition] = {
+      val out = mutable.ArrayBuffer.empty[TypeDefinition]
+      datatypes.foreach(iri => if (!imported.contains(iri)) out.addOne(typeOf(iri)))
+      out
+    }
+
+    private def typeOf(iri: String): TypeDefinition = {
+      val name = names(iri)
+      val doc = documentation(iri)
+      ensurePrefix(iri)
+      var typeof: String = null
+      var facets: Seq[(String, Literal)] = Nil
+      var valuePattern: String = null
+      val definition = datatypeDefinitions.getOrElse(iri, null)
+      if (definition eq null) {
+        val parent = parentDatatype(iri)
+        typeof =
+          if (parent ne null) typeNameFor(parent) else derivedTypes.getOrElse(iri, "string")
+      } else {
+        take(definition)
+        definition.range match {
+          case r: DataRange.Restriction =>
+            typeof = typeNameFor(r.datatype)
+            facets = r.facets
+          case r: DataRange.Datatype => typeof = typeNameFor(r.iri)
           // N possible literal values. We express this as a regex in LinkML.
-          case Some(DatatypeDefinition(_, DataRange.OneOf(values), _)) if values.nonEmpty =>
-            val base = values.map(literalType).distinct match {
-              case Seq(only) => typeNameFor(only)
-              case _ => "string"
-            }
-            (base, Nil, Some(alternationOf(values.map(literalValue))))
-          case Some(other) =>
-            warn("Datatype definition that LinkML cannot express", s"$iri: ${render(other.range)}")
-            ("string", Nil, None)
-          case None =>
-            val base = parentDatatype(iri).map(typeNameFor)
-            (base.getOrElse(derivedTypes.getOrElse(iri, "string")), Nil, None)
+          case r: DataRange.OneOf if r.values.nonEmpty =>
+            val first = literalType(r.values.head)
+            typeof =
+              if (r.values.forall(v => literalType(v) == first)) typeNameFor(first) else "string"
+            valuePattern = alternationOf(r.values)
+          case other =>
+            warn("Datatype definition that LinkML cannot express", s"$iri: ${render(other)}")
+            typeof = "string"
         }
-        facets.map(_._1).distinct.filterNot(typeFacets).foreach { f =>
-          warn("Datatype facet that LinkML cannot express", s"$name: ${short(f)}")
+      }
+      val seen = mutable.HashSet.empty[String]
+      facets.foreach { f =>
+        if (seen.add(f._1) && !typeFacets(f._1)) {
+          warn("Datatype facet that LinkML cannot express", s"$name: ${short(f._1)}")
         }
-        metadata.applyTo(
-          TypeDefinition(
-            name = name,
-            typeUri = Some(uri(iri)),
-            typeof = Some(Reference(typeof)),
-            annotations = annotations,
-          ).copy(
-            minimumValue = facet(facets, XmlSchema.minInclusive),
-            maximumValue = facet(facets, XmlSchema.maxInclusive),
-            minimumLength = lengthFacet(facets, XmlSchema.minLength),
-            maximumLength = lengthFacet(facets, XmlSchema.maxLength),
-            pattern = facets.collectFirst {
-              case (f, Literal(v, _)) if f == XmlSchema.pattern.value =>
-                LinkmlPattern.fromXsd(v).linkml
-            }.orElse(valuePattern),
-          ),
-        )
+      }
+      val minimum = facetValue(facets, XmlSchema.minInclusive)
+      val maximum = facetValue(facets, XmlSchema.maxInclusive)
+      val minimumLength = lengthFacet(facets, XmlSchema.minLength)
+      val maximumLength = lengthFacet(facets, XmlSchema.maxLength)
+      val pattern = facetValue(facets, XmlSchema.pattern)
+      doc.metadata.applyTo(
+        TypeDefinition(
+          name = name,
+          typeUri = Some(uri(iri)),
+          typeof = Some(Reference(typeof)),
+          annotations = doc.annotations,
+        ).copy(
+          minimumValue = if (minimum ne null) Some(LinkmlAny(minimum)) else None,
+          maximumValue = if (maximum ne null) Some(LinkmlAny(maximum)) else None,
+          minimumLength = if (minimumLength != noLength) Some(minimumLength) else None,
+          maximumLength = if (maximumLength != noLength) Some(maximumLength) else None,
+          pattern =
+            if (pattern ne null) Some(LinkmlPattern.fromXsd(pattern).linkml)
+            else if (valuePattern ne null) Some(valuePattern)
+            else None,
+        ),
+      )
     }
 
-    private def facet(facets: Seq[(String, Literal)], which: Iri): Option[LinkmlAny] =
-      facets.collectFirst { case (f, Literal(v, _)) if f == which.value => LinkmlAny(v) }
-
-    private def lengthFacet(facets: Seq[(String, Literal)], which: Iri): Option[Int] =
-      facets.collectFirst { case (f, Literal(v, _)) if f == which.value => v.strip.toIntOption }
-        .flatten
-
-    private def literalValue(v: Literal | LanguageLiteral): String = v match {
-      case Literal(value, _) => value
-      case LanguageLiteral(value, _) => value
+    /** The value of the first facet of a kind, or `null` if there is none. */
+    private def facetValue(facets: Seq[(String, Literal)], which: Iri): String = {
+      val it = facets.iterator
+      while (it.hasNext) {
+        val f = it.next()
+        if (f._1 == which.value) return f._2.value
+      }
+      null
     }
 
-    private def literalType(v: Literal | LanguageLiteral): String = v match {
-      case Literal(_, datatype) => datatype.value
-      case LanguageLiteral(_, _) => Rdf.langString.value
+    /** The first length facet of a kind, or [[noLength]] if there is none or it is no number. */
+    private def lengthFacet(facets: Seq[(String, Literal)], which: Iri): Int = {
+      val value = facetValue(facets, which)
+      if (value eq null) noLength
+      else {
+        val n = value.strip.toIntOption
+        if (n.isDefined) n.get else noLength
+      }
     }
 
-    private def typeNameFor(iri: String): String =
-      configuredTypes.get(iri)
-        .orElse(builtInTypes.get(iri))
-        .orElse(names.get(iri))
-        .getOrElse("string")
+    private def typeNameFor(iri: String): String = {
+      var name = configuredTypes.getOrElse(iri, null)
+      if (name eq null) name = builtInTypes.getOrElse(iri, null)
+      if (name eq null) name = names.getOrElse(iri, null)
+      if (name eq null) "string" else name
+    }
 
     // Ranges
 
     private def any(data: Boolean): SlotRange = SlotRange(range = Some(anyClass), data = data)
 
-    /** The slot range for a range or restriction filler, or None if LinkML can't express it. */
-    private def slotRange(f: Filler): Option[SlotRange] = f match {
-      case ClassExpr.Named(iri) if wellKnownClasses(iri) => Some(any(false))
-      case ClassExpr.Named(iri) => names.get(iri).map(n => SlotRange(range = Some(n)))
-      case DataRange.Datatype(iri) if iri == Rdfs.Literal.value => Some(any(true))
-      // ODRL puts classes in data ranges. LinkML can't express that so it maps back to OWL.
-      case DataRange.Datatype(iri) if isDeclared(iri, EntityKind.Class) => None
-      case DataRange.Datatype(iri) => Some(SlotRange(range = Some(typeNameFor(iri)), data = true))
-      case DataRange.Restriction(base, facets) =>
-        Option.when(facets.forall(f => typeFacets(f._1)))(
+    /** The slot range for a range or restriction filler, or `null` if LinkML can't express it. */
+    private def slotRange(f: Filler): SlotRange = f match {
+      case n: ClassExpr.Named =>
+        if (wellKnownClasses(n.iri)) any(false)
+        else {
+          val name = names.getOrElse(n.iri, null)
+          if (name ne null) SlotRange(range = Some(name)) else null
+        }
+      case d: DataRange.Datatype =>
+        if (d.iri == Rdfs.Literal.value) any(true)
+        // ODRL puts classes in data ranges. LinkML can't express that so it maps back to OWL.
+        else if (isDeclared(d.iri, EntityKind.Class)) null
+        else SlotRange(range = Some(typeNameFor(d.iri)), data = true)
+      case r: DataRange.Restriction =>
+        if (!r.facets.forall(f => typeFacets(f._1))) null
+        else {
+          val facets = r.facets
+          val minimum = facetValue(facets, XmlSchema.minInclusive)
+          val maximum = facetValue(facets, XmlSchema.maxInclusive)
+          val minimumLength = lengthFacet(facets, XmlSchema.minLength)
+          val maximumLength = lengthFacet(facets, XmlSchema.maxLength)
+          val pattern = facetValue(facets, XmlSchema.pattern)
           SlotRange(
-            range = Some(typeNameFor(base)),
-            minimumValue = facets.collectFirst {
-              case (f, Literal(v, _)) if f == XmlSchema.minInclusive.value => v
-            },
-            maximumValue = facets.collectFirst {
-              case (f, Literal(v, _)) if f == XmlSchema.maxInclusive.value => v
-            },
-            minimumLength = lengthFacet(facets, XmlSchema.minLength),
-            maximumLength = lengthFacet(facets, XmlSchema.maxLength),
-            pattern = facets.collectFirst {
-              case (f, Literal(v, _)) if f == XmlSchema.pattern.value =>
-                LinkmlPattern.fromXsd(v).linkml
-            },
+            range = Some(typeNameFor(r.datatype)),
+            minimumValue = if (minimum ne null) Some(minimum) else None,
+            maximumValue = if (maximum ne null) Some(maximum) else None,
+            minimumLength = if (minimumLength != noLength) Some(minimumLength) else None,
+            maximumLength = if (maximumLength != noLength) Some(maximumLength) else None,
+            pattern = if (pattern ne null) Some(LinkmlPattern.fromXsd(pattern).linkml) else None,
             data = true,
-          ),
-        )
-      case ClassExpr.UnionOf(ops) =>
-        val alternatives = ops.map(slotRange)
-        Option.when(alternatives.forall(_.exists(_.isOneElement)))(
-          SlotRange(anyOf = alternatives.flatMap(_.flatMap(_.range))),
-        )
-      case DataRange.UnionOf(ops) =>
-        val alternatives = ops.map(slotRange)
-        Option.when(alternatives.forall(_.exists(_.isOneElement)))(
-          SlotRange(anyOf = alternatives.flatMap(_.flatMap(_.range)), data = true),
-        )
-      case _ => None
+          )
+        }
+      case u: ClassExpr.UnionOf => unionRange(u.operands, data = false)
+      case u: DataRange.UnionOf => unionRange(u.operands, data = true)
+      case _ => null
+    }
+
+    /** An `any_of` of the alternatives, or `null` if one is not a plain class, enum or type. */
+    private def unionRange(alternatives: Seq[Filler], data: Boolean): SlotRange = {
+      val anyOf = Vector.newBuilder[String]
+      val it = alternatives.iterator
+      while (it.hasNext) {
+        val r = slotRange(it.next())
+        if ((r eq null) || !r.isOneElement) return null
+        anyOf.addOne(r.range.get)
+      }
+      SlotRange(anyOf = anyOf.result(), data = data)
     }
 
     /** The range of each property, before any class restrictions. */
-    private lazy val slotRanges: Map[String, SlotRange] = propertyKinds.map { (p, kind) =>
-      val stated = ranges.getOrElse(p, Nil)
-      val range = stated match {
-        case Seq() => None
-        case Seq((a, r)) if isVacuous(r) && hasKnownParent(p) =>
-          // Drop it: the subproperty inherits its parent's range, which this repeats or widens.
-          take(a)
-          None
-        case Seq((a, r)) =>
-          val sr = slotRange(r)
-          if sr.isDefined then take(a)
-          else warn("Range that LinkML cannot express", s"${names(p)}: ${render(r)}")
-          sr
-        case many =>
+    private lazy val slotRanges: mutable.HashMap[String, SlotRange] = {
+      val out = mutable.HashMap.empty[String, SlotRange]
+      properties.foreach { p =>
+        val stated = entriesOf(ranges, p)
+        var range: SlotRange = null
+        if (stated.length == 1) {
+          val e = stated.head
+          if (isVacuous(e.range) && hasKnownParent(p)) {
+            // Drop it: the subproperty inherits its parent's range, which this repeats or widens.
+            take(e.axiom)
+          } else {
+            range = slotRange(e.range)
+            if (range ne null) take(e.axiom)
+            else warn("Range that LinkML cannot express", s"${names(p)}: ${render(e.range)}")
+          }
+        } else if (stated.length > 1) {
+          val all = new java.lang.StringBuilder
+          stated.foreach { e =>
+            if (all.length > 0) all.append(", ")
+            all.append(render(e.range))
+          }
           warn(
             "Several ranges (all of them apply), of which only the first is kept",
-            s"${names(p)}: ${many.map(r => render(r._2)).mkString(", ")}",
+            s"${names(p)}: $all",
           )
-          take(many.head._1)
-          slotRange(many.head._2)
+          take(stated.head.axiom)
+          range = slotRange(stated.head.range)
+        }
+        val data = propertyKinds(p).kind == EntityKind.DataProperty
+        out.update(
+          p,
+          if (range ne null) range
+          // Leave the range empty so a subproperty inherits it from its parent.
+          else if (hasKnownParent(p)) SlotRange(data = data)
+          else any(data),
+        )
       }
-      p -> range.getOrElse {
-        // Leave the range empty so a subproperty inherits it from its parent.
-        if hasKnownParent(p) then SlotRange(data = kind == EntityKind.DataProperty)
-        else any(kind == EntityKind.DataProperty)
-      }
-    }.toMap
+      out
+    }
 
     private def hasKnownParent(p: String): Boolean =
-      superProperties.getOrElse(p, Nil).exists((_, sup) => propertyKinds.contains(sup))
+      entriesOf(superProperties, p).exists(e => propertyKinds.contains(e.sup))
 
     private def isVacuous(f: Filler): Boolean = f match {
-      case ClassExpr.Named(iri) => wellKnownClasses(iri)
-      case DataRange.Datatype(iri) => iri == Rdfs.Literal.value
+      case n: ClassExpr.Named => wellKnownClasses(n.iri)
+      case d: DataRange.Datatype => d.iri == Rdfs.Literal.value
       case _ => false
     }
 
     /** The property's own range, or else the first one it inherits from a parent. */
-    private def effectiveRange(p: String, seen: Set[String] = Set.empty): SlotRange = {
-      val own = importedRanges.getOrElse(p, slotRanges(p))
-      if own.range.isDefined || own.anyOf.nonEmpty || seen(p) then own
-      else
-        superProperties.getOrElse(p, Nil).map(_._2).find(propertyKinds.contains)
-          .fold(own)(sup => effectiveRange(sup, seen + p))
+    private def effectiveRange(p: String): SlotRange = {
+      val seen = mutable.HashSet.empty[String]
+      var property = p
+      while (true) {
+        val imported = importedRanges.getOrElse(property, null)
+        val own = if (imported ne null) imported else slotRanges(property)
+        if (own.range.isDefined || own.anyOf.nonEmpty || !seen.add(property)) return own
+        val sup = entriesOf(superProperties, property).find(e => propertyKinds.contains(e.sup))
+        if (sup.isEmpty) return own
+        property = sup.get.sup
+      }
+      null
     }
 
     // Slots
 
     /** The inverse of each property, in both directions. */
-    private lazy val inverseOf: Map[String, String] =
-      index.inverses.map(take).flatMap(a => Seq(a.first -> a.second, a.second -> a.first)).toMap
+    private lazy val inverseOf: mutable.HashMap[String, String] = {
+      val out = mutable.HashMap.empty[String, String]
+      inverses.foreach { a =>
+        take(a)
+        out.update(a.first, a.second)
+        out.update(a.second, a.first)
+      }
+      out
+    }
 
     /** The property of a restriction that allows at most one plain string, `p max 1 xsd:string`, if
-      * the range of the property is `langstring`. The OWL generator writes this for a single-valued
-      * `langstring` slot, as a text in several languages is one literal per language.
+      * the range of the property is `langstring`, or `null` otherwise. The OWL generator writes
+      * this for a single-valued `langstring` slot, as a text in several languages is one literal
+      * per language.
       */
-    private def plainTextLimit(expr: ClassExpr): Option[String] = expr match {
-      case c: ClassExpr.Cardinality
-          if c.bound == Bound.Max && c.n == 1 && !c.property.inverse &&
-            c.filler.contains(DataRange.Datatype(XmlSchema.string.value)) &&
-            slotRanges.get(c.property.iri).exists(_.range.contains("langstring")) =>
-        Some(c.property.iri)
-      case _ => None
+    private def plainTextLimit(expr: ClassExpr): String = expr match {
+      case c: ClassExpr.Cardinality =>
+        if (
+          c.bound == Bound.Max && c.n == 1 && !c.property.inverse &&
+          c.filler.contains(DataRange.Datatype(XmlSchema.string.value)) && {
+            val r = slotRanges.getOrElse(c.property.iri, null)
+            (r ne null) && r.range.contains("langstring")
+          }
+        ) c.property.iri
+        else null
+      case _ => null
     }
 
     /** The `langstring` properties that are single-valued, see [[plainTextLimit]]. */
-    private lazy val singleTexts: Set[String] = {
-      val b = Set.newBuilder[String]
-      subClassOf.valuesIterator.foreach(_.foreach(e => plainTextLimit(e._2).foreach(b.addOne)))
-      b.result()
+    private lazy val singleTexts: mutable.HashSet[String] = {
+      val out = mutable.HashSet.empty[String]
+      subClassOf.valuesIterator.foreach(_.foreach { e =>
+        val p = plainTextLimit(e.sup)
+        if (p ne null) out.addOne(p)
+      })
+      out
     }
 
-    private lazy val slots: Seq[SlotDefinition] =
-      propertyKinds.toSeq.filterNot((p, _) => imported.contains(p)).map { (p, kind) =>
-        val name = names(p)
-        val (metadata, annotations) = documentation(p)
-        val characteristics =
-          characteristicsOf.getOrElse(p, Nil).map(take).map(_.characteristic).toSet
-        val range = slotRanges(p)
-        val parents = superProperties.getOrElse(p, Nil)
-          .filter((a, sup) => {
-            val known = propertyKinds.contains(sup)
-            take(a)
-            if !known then
-              warn("Subproperty of an annotation or built-in property", s"$name: ${short(sup)}")
-            known
-          }).map(_._2)
-        val (isA, mixins) = chooseParents(p, parents)
-        // LinkML slots inherit `multivalued`, and `false` cannot override it.
-        val inheritsMultivalued = config.multivalued && parents.exists(sup => !isFunctional(sup))
-        if inheritsMultivalued && characteristics.contains(PropertyCharacteristic.Functional) then
-          warn(
-            "Functional subproperty of a property that is not, left multivalued as LinkML slots inherit it",
-            name,
-          )
-        // `domain` takes one class. With a union or several domains, the slot is added to each
-        // class instead (see `slotsByDomain`).
-        val domain = domains.getOrElse(p, Nil).collectFirst {
-          case (_, ClassExpr.Named(d)) if names.contains(d) && classParents.contains(d) =>
-            Reference[ClassDefinition](names(d))
-        }
-        val domainOf = domains.getOrElse(p, Nil).collectFirst {
-          case (_, ClassExpr.UnionOf(ops)) if ops.forall {
-                case ClassExpr.Named(d) => classParents.contains(d)
-                case _ => false
-              } =>
-            ops.collect { case ClassExpr.Named(d) => Reference[ClassDefinition](names(d)) }
-        }.getOrElse(Nil)
-        if characteristics.contains(PropertyCharacteristic.InverseFunctional) then
-          warn("Inverse functional property, which LinkML cannot say", name)
-        chains.getOrElse(p, Nil).map(take).foreach { a =>
-          warn(
-            "Property chain, which LinkML cannot say",
-            s"$name: ${a.chain.map(r => render(ClassExpr.Named(r.iri))).mkString(" o ")}",
-          )
-        }
-        val equivalent = equivalentProperties.getOrElse(p, Nil).map { (a, o) =>
-          take(a)
-          o
-        }
-        // The property kind that the range implies.
-        val inferred = if range.data then EntityKind.DataProperty else EntityKind.ObjectProperty
-        val implements =
-          if kind == EntityKind.AnnotationProperty then Seq(owlNs.concat("AnnotationProperty"))
-          // Mark a data property explicitly unless its range is a type. `Any` or an inherited
-          // range doesn't show that it is a data property.
-          else if kind == EntityKind.DataProperty &&
-            (!range.data || range.range.forall(_ == anyClass))
-          then Seq(owlNs.concat("DatatypeProperty"))
-          else if kind == EntityKind.ObjectProperty && inferred != kind then
-            Seq(owlNs.concat("ObjectProperty"))
-          else Nil
-        metadata.applyTo(
-          SlotDefinition(
-            name = name,
-            slotUri = explicitIri(p, NameGroup.Slot),
-            range =
-              if kind == EntityKind.AnnotationProperty then
-                // A vacuous range such as `rdfs:Literal` maps to `Any`. Don't set it explicitly
-                // because it only adds noise.
-                ranges.get(p).flatMap(_.headOption).flatMap(r => slotRange(r._2))
-                  .flatMap(_.range).filter(_ != anyClass).map(Reference(_))
-              else range.range.map(Reference(_)),
-            anyOf = range.anyOf.map(r => AnonymousSlotExpression(range = Some(Reference(r)))),
-            multivalued = kind != EntityKind.AnnotationProperty &&
-              (inheritsMultivalued || config.multivalued && !characteristics.contains(
-                PropertyCharacteristic.Functional,
-              ) && !singleTexts(p)),
-            domain = domain,
-            domainOf = domainOf,
-            inverse = inverseOf.get(p).filter(names.contains).map(i => Reference(names(i))),
-            isA = isA.map(Reference(_)),
-            mixins = mixins.map(Reference(_)),
-            transitive = characteristics.contains(PropertyCharacteristic.Transitive),
-            symmetric = characteristics.contains(PropertyCharacteristic.Symmetric),
-            asymmetric = characteristics.contains(PropertyCharacteristic.Asymmetric),
-            reflexive = characteristics.contains(PropertyCharacteristic.Reflexive),
-            irreflexive = characteristics.contains(PropertyCharacteristic.Irreflexive),
-            implements = implements.map(uri),
-            annotations = annotations,
-          ).copy(
-            minimumValue = range.minimumValue.map(LinkmlAny(_)),
-            maximumValue = range.maximumValue.map(LinkmlAny(_)),
-            minimumLength = range.minimumLength,
-            maximumLength = range.maximumLength,
-            pattern = range.pattern,
-          ),
-        ).copy(exactMappings = sorted(metadata.exactMappings ++ equivalent.map(e => {
-          ensurePrefix(e); uri(e)
-        })))
+    private lazy val slots: mutable.ArrayBuffer[SlotDefinition] = {
+      val out = mutable.ArrayBuffer.empty[SlotDefinition]
+      properties.foreach(p => if (!imported.contains(p)) out.addOne(slotOf(p)))
+      out
+    }
+
+    private def slotOf(p: String): SlotDefinition = {
+      val kind = propertyKinds(p).kind
+      val name = names(p)
+      val doc = documentation(p)
+      var characteristics = 0
+      entriesOf(characteristicsOf, p)
+        .foreach(a => characteristics |= 1 << take(a).characteristic.ordinal)
+      def has(c: PropertyCharacteristic): Boolean = (characteristics & (1 << c.ordinal)) != 0
+      val range = slotRanges(p)
+      val parents = mutable.ArrayBuffer.empty[String]
+      entriesOf(superProperties, p).foreach { e =>
+        val known = propertyKinds.contains(e.sup)
+        take(e.axiom)
+        if (known) parents.addOne(e.sup)
+        else warn("Subproperty of an annotation or built-in property", s"$name: ${short(e.sup)}")
       }
+      val chosen = chooseParents(p, parents)
+      // LinkML slots inherit `multivalued`, and `false` cannot override it.
+      val inheritsMultivalued = config.multivalued && parents.exists(sup => !isFunctional(sup))
+      if (inheritsMultivalued && has(PropertyCharacteristic.Functional)) {
+        warn(
+          "Functional subproperty of a property that is not, left multivalued as LinkML slots inherit it",
+          name,
+        )
+      }
+      // `domain` takes one class. With a union or several domains, the slot is added to each
+      // class instead (see `slotsByDomain`).
+      val domains = entriesOf(index.domains, p)
+      var domain: Option[Reference[ClassDefinition]] = None
+      val domainIt = domains.iterator
+      while (domain.isEmpty && domainIt.hasNext) {
+        domainIt.next().domain match {
+          case n: ClassExpr.Named =>
+            if (names.contains(n.iri) && classParents.contains(n.iri)) {
+              domain = Some(Reference[ClassDefinition](names(n.iri)))
+            }
+          case _ =>
+        }
+      }
+      var domainOf: Seq[Reference[ClassDefinition]] = Nil
+      val unionIt = domains.iterator
+      var foundUnion = false
+      while (!foundUnion && unionIt.hasNext) {
+        unionIt.next().domain match {
+          case u: ClassExpr.UnionOf =>
+            if (
+              u.operands.forall {
+                case n: ClassExpr.Named => classParents.contains(n.iri)
+                case _ => false
+              }
+            ) {
+              foundUnion = true
+              val refs = Vector.newBuilder[Reference[ClassDefinition]]
+              u.operands.foreach {
+                case n: ClassExpr.Named => refs.addOne(Reference[ClassDefinition](names(n.iri)))
+                case _ =>
+              }
+              domainOf = refs.result()
+            }
+          case _ =>
+        }
+      }
+      if (has(PropertyCharacteristic.InverseFunctional)) {
+        warn("Inverse functional property, which LinkML cannot say", name)
+      }
+      entriesOf(chains, p).foreach { a =>
+        take(a)
+        val chain = new java.lang.StringBuilder
+        a.chain.foreach { r =>
+          if (chain.length > 0) chain.append(" o ")
+          chain.append(render(ClassExpr.Named(r.iri)))
+        }
+        warn("Property chain, which LinkML cannot say", s"$name: $chain")
+      }
+      val equivalent = mutable.ArrayBuffer.empty[String]
+      entriesOf(equivalentProperties, p).foreach { e =>
+        take(e.axiom)
+        equivalent.addOne(e.other)
+      }
+      // The property kind that the range implies.
+      val inferred = if (range.data) EntityKind.DataProperty else EntityKind.ObjectProperty
+      val implements: String =
+        if (kind == EntityKind.AnnotationProperty) owlNs.concat("AnnotationProperty")
+        // Mark a data property explicitly unless its range is a type. `Any` or an inherited
+        // range doesn't show that it is a data property.
+        else if (
+          kind == EntityKind.DataProperty && (!range.data || range.range.forall(_ == anyClass))
+        ) owlNs.concat("DatatypeProperty")
+        else if (kind == EntityKind.ObjectProperty && inferred != kind) {
+          owlNs.concat("ObjectProperty")
+        } else null
+      val slotUri = explicitIri(p, NameGroup.Slot)
+      val declaredRange =
+        if (kind == EntityKind.AnnotationProperty) {
+          // A vacuous range such as `rdfs:Literal` maps to `Any`. Don't set it explicitly
+          // because it only adds noise.
+          val stated = ranges.getOrElse(p, null)
+          val r = if ((stated ne null) && stated.nonEmpty) slotRange(stated.head.range) else null
+          if ((r ne null) && r.range.isDefined && r.range.get != anyClass) {
+            Some(Reference(r.range.get))
+          } else None
+        } else if (range.range.isDefined) Some(Reference(range.range.get))
+        else None
+      val anyOf = Vector.newBuilder[AnonymousSlotExpression]
+      range.anyOf.foreach(r => anyOf.addOne(AnonymousSlotExpression(range = Some(Reference(r)))))
+      val inverse = inverseOf.getOrElse(p, null)
+      val definition = doc.metadata.applyTo(
+        SlotDefinition(
+          name = name,
+          slotUri = slotUri,
+          range = declaredRange,
+          anyOf = anyOf.result(),
+          multivalued = kind != EntityKind.AnnotationProperty &&
+            (inheritsMultivalued || config.multivalued &&
+              !has(PropertyCharacteristic.Functional) && !singleTexts(p)),
+          domain = domain,
+          domainOf = domainOf,
+          inverse =
+            if ((inverse ne null) && names.contains(inverse)) Some(Reference(names(inverse)))
+            else None,
+          isA = if (chosen.isA ne null) Some(Reference(chosen.isA)) else None,
+          mixins = references(chosen.mixins),
+          transitive = has(PropertyCharacteristic.Transitive),
+          symmetric = has(PropertyCharacteristic.Symmetric),
+          asymmetric = has(PropertyCharacteristic.Asymmetric),
+          reflexive = has(PropertyCharacteristic.Reflexive),
+          irreflexive = has(PropertyCharacteristic.Irreflexive),
+          implements = if (implements ne null) Vector(uri(implements)) else Nil,
+          annotations = doc.annotations,
+        ).copy(
+          minimumValue = range.minimumValue.map(LinkmlAny(_)),
+          maximumValue = range.maximumValue.map(LinkmlAny(_)),
+          minimumLength = range.minimumLength,
+          maximumLength = range.maximumLength,
+          pattern = range.pattern,
+        ),
+      )
+      val equivalentUris = mutable.ArrayBuffer.empty[UriOrCurie]
+      equivalent.foreach { e =>
+        ensurePrefix(e)
+        equivalentUris.addOne(uri(e))
+      }
+      definition.copy(exactMappings = sorted(doc.metadata.exactMappings, equivalentUris))
+    }
+
+    private def references[A](names: collection.Seq[String]): Seq[Reference[A]] = {
+      val out = Vector.newBuilder[Reference[A]]
+      names.foreach(n => out.addOne(Reference[A](n)))
+      out.result()
+    }
 
     /** Splits named parents into `is_a` and `mixins`. `is_a` prefers a parent in the child's
-      * namespace.
+      * namespace. The parents are sorted, those in the child's namespace first.
       */
-    private def chooseParents(
-        child: String,
-        parents: Seq[String],
-    ): (Option[String], Seq[String]) = {
-      val named = parents.distinct.filter(names.contains).sortBy(p =>
-        (namespaceOf(p) != namespaceOf(child), p),
-      )
-      (named.headOption.map(names), named.drop(1).map(names))
+    private def chooseParents(child: String, parents: collection.Seq[String]): Parents = {
+      val childNamespace = namespaceOf(child)
+      val seen = mutable.HashSet.empty[String]
+      val same = mutable.ArrayBuffer.empty[String]
+      val other = mutable.ArrayBuffer.empty[String]
+      parents.foreach { p =>
+        if (seen.add(p) && names.contains(p)) {
+          (if (namespaceOf(p) == childNamespace) same else other).addOne(p)
+        }
+      }
+      var isA: String = null
+      val mixins = mutable.ArrayBuffer.empty[String]
+
+      def add(p: String): Unit = if (isA eq null) isA = names(p) else mixins.addOne(names(p))
+
+      same.sortInPlace().foreach(add)
+      other.sortInPlace().foreach(add)
+      (isA = isA, mixins = mixins)
     }
+
+    /** The `is_a` parent of an element, by name, or `null` if it has none. */
+    private def isAOf(child: String, parents: collection.Seq[String]): String =
+      chooseParents(child, parents).isA
 
     // Classes
 
@@ -904,143 +1344,204 @@ object OwlImporter {
       * A class defined by an intersection is a subclass of each named conjunct, and the members of
       * a union or a disjoint union are subclasses of the class they define.
       */
-    private lazy val impliedParents: Map[String, Seq[String]] = {
-      val out = mutable.LinkedHashMap.empty[String, mutable.LinkedHashSet[String]]
+    private lazy val impliedParents: mutable.HashMap[String, mutable.ArrayBuffer[String]] = {
+      val out = mutable.HashMap.empty[String, mutable.ArrayBuffer[String]]
       def add(child: String, parent: String): Unit =
-        if child != parent && names.contains(parent) && !enumMembers.contains(parent) &&
+        if (
+          child != parent && names.contains(parent) && !enumMembers.contains(parent) &&
           !wellKnownClasses(parent)
-        then out.getOrElseUpdate(child, mutable.LinkedHashSet.empty) += parent
-      def named(ops: Seq[ClassExpr]) = ops.collect { case ClassExpr.Named(o) => o }
-      classes.filterNot(enumMembers.contains).foreach { c =>
-        equivalents.getOrElse(c, Nil).foreach { (_, other) =>
-          other match {
-            // Manager = Staff and (manages some Team): every manager is a staff member.
-            case ClassExpr.IntersectionOf(ops) => named(ops).foreach(add(c, _))
-            // Vehicle = Car or Truck: every car is a vehicle.
-            case ClassExpr.UnionOf(ops) => named(ops).foreach(add(_, c))
-            case _ =>
+        ) {
+          val parents = out.getOrElseUpdate(child, mutable.ArrayBuffer.empty)
+          if (!parents.contains(parent)) parents.addOne(parent)
+        }
+      classes.foreach { c =>
+        if (!enumMembers.contains(c)) {
+          entriesOf(equivalents, c).foreach { e =>
+            e.other match {
+              // Manager = Staff and (manages some Team): every manager is a staff member.
+              case x: ClassExpr.IntersectionOf =>
+                x.operands.foreach {
+                  case n: ClassExpr.Named => add(c, n.iri)
+                  case _ =>
+                }
+              // Vehicle = Car or Truck: every car is a vehicle.
+              case x: ClassExpr.UnionOf =>
+                x.operands.foreach {
+                  case n: ClassExpr.Named => add(n.iri, c)
+                  case _ =>
+                }
+              case _ =>
+            }
+          }
+          // Color disjointUnionOf (Red Green): every red thing is a color.
+          val union = disjointUnions.getOrElse(c, null)
+          if (union ne null) {
+            union.operands.foreach {
+              case n: ClassExpr.Named => add(n.iri, c)
+              case _ =>
+            }
           }
         }
-        // Color disjointUnionOf (Red Green): every red thing is a color.
-        disjointUnions.get(c).foreach(a => named(a.operands).foreach(add(_, c)))
       }
-      out.view.mapValues(_.toSeq).toMap
+      out
     }
 
     /** The named parents of each class, minus any that would create a cycle. */
-    private lazy val classParents: Map[String, Seq[String]] = {
-      val raw = classes.map { c =>
-        c -> (subClassOf.getOrElse(c, Nil).flatMap {
-          case (a, ClassExpr.Named(p)) if names.contains(p) && p != c && !enumMembers.contains(p) =>
-            take(a)
-            Some(p)
-          case (a, ClassExpr.Named(p)) if wellKnownClasses(p) =>
-            // Every class is a subclass of owl:Thing anyway.
-            take(a)
-            None
-          case _ => None
-        } ++ impliedParents.getOrElse(c, Nil)).distinct
-      }.toMap
+    private lazy val classParents: mutable.HashMap[String, mutable.ArrayBuffer[String]] = {
+      val raw = mutable.HashMap.empty[String, mutable.ArrayBuffer[String]]
+      classes.foreach { c =>
+        val parents = mutable.ArrayBuffer.empty[String]
+        def add(p: String): Unit = if (!parents.contains(p)) parents.addOne(p)
+        entriesOf(subClassOf, c).foreach { e =>
+          e.sup match {
+            case n: ClassExpr.Named =>
+              val p = n.iri
+              if (names.contains(p) && p != c && !enumMembers.contains(p)) {
+                take(e.axiom)
+                add(p)
+              } else if (wellKnownClasses(p)) {
+                // Every class is a subclass of owl:Thing anyway.
+                take(e.axiom)
+              }
+            case _ =>
+          }
+        }
+        entriesOf(impliedParents, c).foreach(add)
+        raw.update(c, parents)
+      }
       // Equivalent classes are subclasses of each other. LinkML doesn't allow cycles, so drop any
       // parent that leads back to the child.
-      val out = mutable.HashMap.empty[String, Seq[String]]
-      def reaches(from: String, target: String, seen: Set[String]): Boolean =
-        from == target || (!seen(from) && out.getOrElse(from, Nil).exists(
-          reaches(_, target, seen + from),
-        ))
+      val out = mutable.HashMap.empty[String, mutable.ArrayBuffer[String]]
+      def reaches(from: String, target: String): Boolean = {
+        val seen = mutable.HashSet.empty[String]
+        val stack = mutable.ArrayBuffer(from)
+        while (stack.nonEmpty) {
+          val x = stack.remove(stack.length - 1)
+          if (x == target) return true
+          if (seen.add(x)) {
+            val parents = out.getOrElse(x, null)
+            if (parents ne null) stack.addAll(parents)
+          }
+        }
+        false
+      }
       classes.foreach { c =>
-        out(c) = raw(c).filterNot { p =>
-          val cycle = reaches(p, c, Set.empty)
-          if cycle then
+        val parents = mutable.ArrayBuffer.empty[String]
+        raw(c).foreach { p =>
+          if (reaches(p, c)) {
             warn("Subclass cycle, broken by leaving out a parent", s"${names(c)} -> ${names(p)}")
-          cycle
+          } else parents.addOne(p)
+        }
+        out.update(c, parents)
+      }
+      out
+    }
+
+    /** The children of each class by IRI, by `is_a` only (not mixins). */
+    private lazy val childrenOf: mutable.HashMap[String, mutable.ArrayBuffer[String]] = {
+      val out = mutable.HashMap.empty[String, mutable.ArrayBuffer[String]]
+      classes.foreach { k =>
+        val parentName = isAOf(k, classParents(k))
+        if (parentName ne null) {
+          out.getOrElseUpdate(naming.iriOf(parentName), mutable.ArrayBuffer.empty).addOne(k)
         }
       }
-      out.toMap
+      out
     }
 
-    /** The children of each class, by `is_a` only (not mixins). */
-    private lazy val childrenOf: Map[String, Seq[String]] =
-      classes.flatMap(k => chooseParents(k, classParents(k))._1.map(_ -> k))
-        .map((parentName, k) => naming.iriOf(parentName) -> k).groupMap(_._1)(_._2)
-
-    /** The `is_a` parent shared by all the classes, if any. */
-    private def commonParent(members: Seq[String]): Option[String] =
-      members.map(m => chooseParents(m, classParents(m))._1).distinct match {
-        case Seq(Some(p)) => Some(naming.iriOf(p))
-        case _ => None
+    /** The `is_a` parent shared by all the classes, or `null` if there is none. */
+    private def commonParent(members: collection.Seq[String]): String =
+      if (members.isEmpty) null
+      else {
+        val first = isAOf(members.head, classParents(members.head))
+        if ((first ne null) && members.forall(m => isAOf(m, classParents(m)) == first)) {
+          naming.iriOf(first)
+        } else null
       }
 
-    private def ancestors(c: String): Set[String] = {
-      val out = mutable.LinkedHashSet.empty[String]
-      def visit(x: String): Unit =
-        classParents.getOrElse(x, Nil).foreach(p => if out.add(p) then visit(p))
-      visit(c)
-      out.toSet
-    }
+    /** Compares properties by their place in [[properties]]. Others come last. */
+    private val byPropertyOrder: java.util.Comparator[String] = (a, b) =>
+      Integer.compare(orderOf(a), orderOf(b))
 
-    private lazy val propertyOrder: Map[String, Int] = propertyKinds.keys.zipWithIndex.toMap
+    private def orderOf(p: String): Int = {
+      val info = propertyKinds.getOrElse(p, null)
+      if (info ne null) info.order else Int.MaxValue
+    }
 
     /** Slots attached to a class through `rdfs:domain`. */
-    private lazy val slotsByDomain: Map[String, Seq[String]] = propertyKinds.keys.toSeq.flatMap {
-      p =>
-        domains.getOrElse(p, Nil).flatMap { (a, d) =>
-          val members = d match {
-            case ClassExpr.Named(c) if wellKnownClasses(c) =>
-              take(a)
-              Nil
-            case ClassExpr.Named(c) =>
-              take(a)
-              if domains(p).sizeIs > 1 then
-                warn(
-                  "Several domains (all of them apply), attached to each",
-                  s"${names(p)}: ${names.getOrElse(c, c)}",
-                )
-              Seq(c)
-            case ClassExpr.UnionOf(ops) if ops.forall(_.isInstanceOf[ClassExpr.Named]) =>
-              take(a)
-              ops.collect { case ClassExpr.Named(c) => c }
+    private lazy val slotsByDomain: mutable.HashMap[String, mutable.ArrayBuffer[String]] = {
+      val out = mutable.HashMap.empty[String, mutable.ArrayBuffer[String]]
+      def attach(c: String, p: String): Unit =
+        if (classParents.contains(c)) out.getOrElseUpdate(c, mutable.ArrayBuffer.empty).addOne(p)
+      properties.foreach { p =>
+        val stated = entriesOf(domains, p)
+        stated.foreach { e =>
+          e.domain match {
+            case n: ClassExpr.Named =>
+              take(e.axiom)
+              if (!wellKnownClasses(n.iri)) {
+                if (stated.length > 1) {
+                  warn(
+                    "Several domains (all of them apply), attached to each",
+                    s"${names(p)}: ${names.getOrElse(n.iri, n.iri)}",
+                  )
+                }
+                attach(n.iri, p)
+              }
+            case u: ClassExpr.UnionOf if u.operands.forall(_.isInstanceOf[ClassExpr.Named]) =>
+              take(e.axiom)
+              u.operands.foreach(o => attach(o.asInstanceOf[ClassExpr.Named].iri, p))
             case other =>
               warn("Domain that LinkML cannot express", s"${names(p)}: ${render(other)}")
-              Nil
           }
-          members.filter(classParents.contains).map(_ -> p)
         }
-    }.groupMap(_._1)(_._2)
+      }
+      out
+    }
 
-    private lazy val classDefinitions: Seq[ClassDefinition] =
-      classes.filterNot(imported.contains).map(buildClass)
+    private lazy val classDefinitions: mutable.ArrayBuffer[ClassDefinition] = {
+      val out = mutable.ArrayBuffer.empty[ClassDefinition]
+      classes.foreach(c => if (!imported.contains(c)) out.addOne(buildClass(c)))
+      out
+    }
 
     private def buildClass(c: String): ClassDefinition = {
       val name = names(c)
-      val (metadata, annotations) = termDocumentation(c)
+      val doc = termDocumentation(c)
       val parents = classParents(c)
-      val (isA, mixins) = chooseParents(c, parents)
+      val chosen = chooseParents(c, parents)
       val notes = mutable.ArrayBuffer.empty[String]
-      val usage = mutable.LinkedHashMap.empty[String, SlotDefinition]
-      val attached = mutable.LinkedHashSet.from(slotsByDomain.getOrElse(c, Nil))
+      val usage = mutable.HashMap.empty[String, SlotDefinition]
+      val usageOrder = mutable.ArrayBuffer.empty[String]
+      val attached = mutable.ArrayBuffer.empty[String]
+      val attachedSet = mutable.HashSet.empty[String]
+      def attach(p: String): Unit = if (attachedSet.add(p)) attached.addOne(p)
+      entriesOf(slotsByDomain, c).foreach(attach)
       var isAbstract = false
-      var exact = Seq.empty[UriOrCurie]
-      var disjoint = Seq.empty[String]
+      val exact = mutable.ArrayBuffer.empty[UriOrCurie]
+      val disjoint = mutable.ArrayBuffer.empty[String]
 
       def unsupported(kind: String, expr: ClassExpr): Unit = {
         val text = render(expr)
         warn(kind, s"$name: $text")
-        notes += s"OWL: $text"
+        notes.addOne(s"OWL: $text")
       }
 
       def restrict(p: String, f: SlotDefinition => SlotDefinition): Unit = {
-        attached += p
+        attach(p)
         val n = names(p)
-        val before = usage.getOrElse(n, SlotDefinition(name = n))
-        val after = f(before)
-        if after != SlotDefinition(name = n) then usage(n) = after
+        val before = usage.getOrElse(n, null)
+        val after = f(if (before ne null) before else SlotDefinition(name = n))
+        if (after != SlotDefinition(name = n)) {
+          if (before eq null) usageOrder.addOne(n)
+          usage.update(n, after)
+        }
       }
 
       /** True if the filler adds nothing to the property's own range. */
       def coversRange(p: String, filler: Filler): Boolean = filler match {
-        case ClassExpr.Named(iri) if wellKnownClasses(iri) => true
-        case DataRange.Datatype(iri) if iri == Rdfs.Literal.value => true
+        case n: ClassExpr.Named if wellKnownClasses(n.iri) => true
+        case d: DataRange.Datatype if d.iri == Rdfs.Literal.value => true
         case other =>
           val own = effectiveRange(p).copy(data = false)
           val widened = own.copy(
@@ -1050,89 +1551,112 @@ object OwlImporter {
             maximumLength = None,
             pattern = None,
           )
-          slotRange(other).map(_.copy(data = false)).exists(r => r == own || r == widened)
+          val r = slotRange(other)
+          (r ne null) && {
+            val narrowed = r.copy(data = false)
+            narrowed == own || narrowed == widened
+          }
       }
 
       /** True if the expressions are exactly the class's children, so the children cover it. */
       def isUnionOfChildren(ops: Seq[ClassExpr]): Boolean =
-        ops.forall(_.isInstanceOf[ClassExpr.Named]) &&
-          ops.collect { case ClassExpr.Named(o) => o }.toSet == childrenOf.getOrElse(c, Nil).toSet
+        ops.forall(_.isInstanceOf[ClassExpr.Named]) && {
+          val members = mutable.HashSet.empty[String]
+          ops.foreach(o => members.addOne(o.asInstanceOf[ClassExpr.Named].iri))
+          val children = mutable.HashSet.empty[String]
+          children.addAll(entriesOf(childrenOf, c))
+          members == children
+        }
 
       /** True if the slot holds at most one value, so a max cardinality of 1 adds nothing. */
       def singleValuedSlot(p: String) = isFunctional(p) || !config.multivalued
 
       def superclass(expr: ClassExpr): Unit = expr match {
-        case ClassExpr.Named(_) => // handled with the parents
-        case ClassExpr.IntersectionOf(ops) => ops.foreach(superclass)
-        case ClassExpr.AllValuesFrom(PropertyRef(p, false), filler) if propertyKinds.contains(p) =>
-          if coversRange(p, filler) then attached += p
-          else
-            slotRange(filler) match {
-              case Some(r) =>
-                restrict(
-                  p,
-                  s =>
-                    s.copy(
-                      range = r.range.map(Reference(_)),
-                      anyOf = r.anyOf.map(x => AnonymousSlotExpression(range = Some(Reference(x)))),
-                      minimumValue = r.minimumValue.map(LinkmlAny(_)),
-                      maximumValue = r.maximumValue.map(LinkmlAny(_)),
-                      minimumLength = r.minimumLength,
-                      maximumLength = r.maximumLength,
-                      pattern = r.pattern,
-                    ),
-                )
-              case None => unsupported("Restriction that LinkML cannot express", expr)
-            }
-        case ClassExpr.SomeValuesFrom(PropertyRef(p, false), filler) if propertyKinds.contains(p) =>
-          if coversRange(p, filler) then restrict(p, _.copy(required = true))
-          else
-            (config.someValuesFromStyle, slotRange(filler)) match {
-              case (SomeValuesFrom.Range, Some(r)) =>
-                restrict(p, _.copy(required = true, range = r.range.map(Reference(_))))
-              case (SomeValuesFrom.Required, Some(r)) if r.range.isDefined =>
-                restrict(p, withMember(_, r.range))
-              case _ => unsupported("Restriction that LinkML cannot express", expr)
-            }
+        case _: ClassExpr.Named => // handled with the parents
+        case e: ClassExpr.IntersectionOf => e.operands.foreach(superclass)
+        case e: ClassExpr.AllValuesFrom
+            if !e.property.inverse && propertyKinds.contains(e.property.iri) =>
+          val p = e.property.iri
+          if (coversRange(p, e.filler)) attach(p)
+          else {
+            val r = slotRange(e.filler)
+            if (r ne null) {
+              val anyOf = Vector.newBuilder[AnonymousSlotExpression]
+              r.anyOf.foreach(x =>
+                anyOf.addOne(AnonymousSlotExpression(range = Some(Reference(x)))),
+              )
+              val narrowedAnyOf = anyOf.result()
+              restrict(
+                p,
+                s =>
+                  s.copy(
+                    range = r.range.map(Reference(_)),
+                    anyOf = narrowedAnyOf,
+                    minimumValue = r.minimumValue.map(LinkmlAny(_)),
+                    maximumValue = r.maximumValue.map(LinkmlAny(_)),
+                    minimumLength = r.minimumLength,
+                    maximumLength = r.maximumLength,
+                    pattern = r.pattern,
+                  ),
+              )
+            } else unsupported("Restriction that LinkML cannot express", expr)
+          }
+        case e: ClassExpr.SomeValuesFrom
+            if !e.property.inverse && propertyKinds.contains(e.property.iri) =>
+          val p = e.property.iri
+          if (coversRange(p, e.filler)) restrict(p, _.copy(required = true))
+          else {
+            val r = slotRange(e.filler)
+            val style = config.someValuesFromStyle
+            if ((r ne null) && style == SomeValuesFrom.Range) {
+              restrict(p, _.copy(required = true, range = r.range.map(Reference(_))))
+            } else if ((r ne null) && style == SomeValuesFrom.Required && r.range.isDefined) {
+              restrict(p, withMember(_, r.range))
+            } else unsupported("Restriction that LinkML cannot express", expr)
+          }
         // The slot is single-valued already, see `singleTexts`
-        case _ if plainTextLimit(expr).isDefined =>
-        case ClassExpr.Cardinality(bound, n, PropertyRef(p, false), filler)
-            if propertyKinds.contains(p) =>
-          val qualifiedNarrower = filler.exists(f => !coversRange(p, f))
-          if qualifiedNarrower then
-            (config.someValuesFromStyle, filler.flatMap(slotRange)) match {
-              case (SomeValuesFrom.Range, Some(r)) =>
-                cardinality(p, bound, n, singleValuedSlot(p), restrict)
-                restrict(p, _.copy(range = r.range.map(Reference(_))))
-              case (_, Some(r)) if bound == Bound.Min && n == 1 && r.range.isDefined =>
-                restrict(p, withMember(_, r.range))
-              case _ => unsupported("Qualified cardinality that LinkML cannot express", expr)
-            }
-          else cardinality(p, bound, n, singleValuedSlot(p), restrict)
-        case ClassExpr.HasValue(PropertyRef(p, false), value) if propertyKinds.contains(p) =>
-          val text = value match {
-            case Iri(v) => enumValueText(p, v).getOrElseFast(v)
-            case Literal(v, _) => v
-            case LanguageLiteral(v, _) => v
+        case _ if plainTextLimit(expr) ne null =>
+        case e: ClassExpr.Cardinality
+            if !e.property.inverse && propertyKinds.contains(e.property.iri) =>
+          val p = e.property.iri
+          val filler = e.filler
+          if (filler.isDefined && !coversRange(p, filler.get)) {
+            val r = slotRange(filler.get)
+            if ((r ne null) && config.someValuesFromStyle == SomeValuesFrom.Range) {
+              cardinality(p, e.bound, e.n, singleValuedSlot(p), restrict)
+              restrict(p, _.copy(range = r.range.map(Reference(_))))
+            } else if ((r ne null) && e.bound == Bound.Min && e.n == 1 && r.range.isDefined) {
+              restrict(p, withMember(_, r.range))
+            } else unsupported("Qualified cardinality that LinkML cannot express", expr)
+          } else cardinality(p, e.bound, e.n, singleValuedSlot(p), restrict)
+        case e: ClassExpr.HasValue
+            if !e.property.inverse && propertyKinds.contains(e.property.iri) =>
+          val p = e.property.iri
+          val text = e.value match {
+            case i: Iri =>
+              val value = enumValueText(p, i.value)
+              if (value ne null) value else i.value
+            case l: Literal => l.value
+            case l: LanguageLiteral => l.value
           }
           restrict(p, _.copy(equalsString = Some(text)))
-        case ClassExpr.UnionOf(ops) if isUnionOfChildren(ops) => isAbstract = true
+        case e: ClassExpr.UnionOf if isUnionOfChildren(e.operands) => isAbstract = true
         case other => unsupported("Superclass that LinkML cannot express", other)
       }
 
-      subClassOf.getOrElse(c, Nil).foreach { (a, sup) =>
-        if !sup.isInstanceOf[ClassExpr.Named] then {
-          take(a)
-          superclass(sup)
+      entriesOf(subClassOf, c).foreach { e =>
+        if (!e.sup.isInstanceOf[ClassExpr.Named]) {
+          take(e.axiom)
+          superclass(e.sup)
         }
       }
-      equivalents.getOrElse(c, Nil).foreach { (a, other) =>
-        take(a)
-        other match {
-          case ClassExpr.Named(o) =>
-            ensurePrefix(o)
-            exact = exact :+ uri(o)
-          case ClassExpr.UnionOf(ops) if isUnionOfChildren(ops) => isAbstract = true
+      entriesOf(equivalents, c).foreach { e =>
+        take(e.axiom)
+        e.other match {
+          case n: ClassExpr.Named =>
+            ensurePrefix(n.iri)
+            exact.addOne(uri(n.iri))
+          case u: ClassExpr.UnionOf if isUnionOfChildren(u.operands) => isAbstract = true
           case expr =>
             // Keep it as a superclass. LinkML can't say that it is also a sufficient condition.
             warn(
@@ -1142,80 +1666,163 @@ object OwlImporter {
             superclass(expr)
         }
       }
-      val children = childrenOf.getOrElse(c, Nil).toSet
+      val childList = entriesOf(childrenOf, c)
+      val children = mutable.HashSet.empty[String]
+      children.addAll(childList)
       // A disjoint pair goes on the first class. A larger group goes on the parent if it is
       // exactly the parent's children, otherwise on each member.
-      disjointByClass.getOrElse(c, Nil).foreach {
-        case a @ DisjointClasses(Seq(ClassExpr.Named(`c`), ClassExpr.Named(o)), _)
-            if classParents.contains(o) =>
-          take(a)
-          disjoint = disjoint :+ names(o)
-        case a @ DisjointClasses(ops, _)
-            if ops.sizeIs > 2 && ops.forall(_.isInstanceOf[ClassExpr.Named]) =>
-          val members = ops.collect { case ClassExpr.Named(o) => o }
-
-          // That case is handled below, with `children_are_mutually_disjoint` on the parent.
-          // Members that became enums have no parents, so they are checked first.
-          def allChildren =
-            commonParent(members).exists(p => childrenOf.getOrElse(p, Nil).toSet == members.toSet)
-
-          if members.forall(classParents.contains) && !allChildren then {
-            take(a)
-            disjoint = disjoint ++ members.filterNot(_ == c).map(names)
+      entriesOf(disjointByClass, c).foreach { a =>
+        val ops = a.operands
+        if (ops.length == 2) {
+          ops(0) match {
+            case first: ClassExpr.Named =>
+              ops(1) match {
+                case second: ClassExpr.Named =>
+                  if (first.iri == c && classParents.contains(second.iri)) {
+                    take(a)
+                    disjoint.addOne(names(second.iri))
+                  }
+                case _ =>
+              }
+            case _ =>
           }
-        case _ =>
-      }
-      val disjointChildren = disjointByClass.values.flatten.exists {
-        case a @ DisjointClasses(ops, _) if ops.sizeIs > 2 && children.nonEmpty =>
-          val members = ops.collect { case ClassExpr.Named(o) => o }.toSet
-          val matches = members == children && children.size == ops.size
-          if matches then take(a)
-          matches
-        case _ => false
-      } || disjointUnions.get(c).exists { a =>
-        take(a)
-        isAbstract = true
-        true
-      }
-      val keys = keysByClass.getOrElse(c, Nil).collect {
-        case a @ HasKey(_, properties, _) if properties.forall(names.contains) =>
+        } else if (ops.length > 2 && isOnEachMember(a)) {
           take(a)
-          properties.map(names)
+          ops.foreach { o =>
+            val m = o.asInstanceOf[ClassExpr.Named].iri
+            if (m != c) disjoint.addOne(names(m))
+          }
+        }
+      }
+      // A group of exactly the children includes the first child, so only its groups are checked.
+      val disjointChildren = (children.nonEmpty && entriesOf(disjointByClass, childList.head)
+        .exists { a =>
+          val ops = a.operands
+          ops.length > 2 && {
+            val members = mutable.HashSet.empty[String]
+            ops.foreach {
+              case n: ClassExpr.Named => members.addOne(n.iri)
+              case _ =>
+            }
+            val matches = members == children && children.size == ops.length
+            if (matches) take(a)
+            matches
+          }
+        }) || {
+        val union = disjointUnions.getOrElse(c, null)
+        (union ne null) && {
+          take(union)
+          isAbstract = true
+          true
+        }
+      }
+      val keys = mutable.ArrayBuffer.empty[collection.Seq[String]]
+      entriesOf(keysByClass, c).foreach { a =>
+        if (a.properties.forall(names.contains)) {
+          take(a)
+          val slots = mutable.ArrayBuffer.empty[String]
+          a.properties.foreach(p => slots.addOne(names(p)))
+          keys.addOne(slots)
+        }
       }
 
       // List only slots that no ancestor already has, here or in an imported schema.
-      val inherited = ancestors(c).flatMap(a =>
-        slotsByDomain.getOrElse(a, Nil) ++ importedSlots.getOrElse(a, Set.empty),
-      )
+      val ancestors = mutable.HashSet.empty[String]
+      val importedAncestorSlots = mutable.ArrayBuffer.empty[mutable.HashSet[String]]
+      val stack = mutable.ArrayBuffer.from(entriesOf(classParents, c))
+      while (stack.nonEmpty) {
+        val a = stack.remove(stack.length - 1)
+        if (ancestors.add(a)) {
+          val slots = importedSlots.getOrElse(a, null)
+          if (slots ne null) importedAncestorSlots.addOne(slots)
+          stack.addAll(entriesOf(classParents, a))
+        }
+      }
+      def isInherited(p: String): Boolean =
+        entriesOf(domainClassesOf, p).exists(ancestors.contains) ||
+          importedAncestorSlots.exists(_.contains(p))
       // In declaration order, which the generator keeps: a slot can come from `rdfs:domain` here
       // and from a restriction in the generated OWL.
-      val own = attached.toSeq.filterNot(inherited.contains)
-        .sortBy(p => propertyOrder.getOrElse(p, Int.MaxValue)).map(names)
+      val own = mutable.ArrayBuffer.empty[String]
+      attached.foreach(p => if (!isInherited(p)) own.addOne(p))
+      val ordered = own.toArray
+      // A stable sort, so slots that are not properties keep their order.
+      java.util.Arrays.sort(ordered, byPropertyOrder)
+      val slotRefs = Vector.newBuilder[Reference[SlotDefinition]]
+      ordered.foreach(p => slotRefs.addOne(Reference(names(p))))
+      val slotUsage = VectorMap.newBuilder[String, SlotDefinition]
+      usageOrder.foreach(n => slotUsage.addOne(n -> usage(n)))
+      val uniqueKeys = VectorMap.newBuilder[String, UniqueKey]
+      var i = 0
+      keys.foreach { slots =>
+        val keyName = if (i == 0) s"${name}_key" else s"${name}_key_${i + 1}"
+        uniqueKeys.addOne(
+          keyName -> UniqueKey(uniqueKeyName = keyName, uniqueKeySlots = references(slots)),
+        )
+        i += 1
+      }
+      val classNotes = Vector.newBuilder[LocalizedText]
+      classNotes.addAll(doc.metadata.notes)
+      notes.foreach(n => classNotes.addOne(PlainText(n)))
 
-      metadata.applyTo(
+      doc.metadata.applyTo(
         ClassDefinition(
           name = name,
           classUri = explicitIri(c, NameGroup.Class),
-          isA = isA.map(Reference(_)),
-          mixins = mixins.map(Reference(_)),
-          slots = own.map(Reference(_)),
-          slotUsage = VectorMap.from(usage),
+          isA = if (chosen.isA ne null) Some(Reference(chosen.isA)) else None,
+          mixins = references(chosen.mixins),
+          slots = slotRefs.result(),
+          slotUsage = slotUsage.result(),
           `abstract` = isAbstract,
           childrenAreMutuallyDisjoint = disjointChildren,
-          disjointWith = disjoint.map(Reference(_)),
-          uniqueKeys = VectorMap.from(keys.zipWithIndex.map { (slots, i) =>
-            val keyName = if i == 0 then s"${name}_key" else s"${name}_key_${i + 1}"
-            keyName -> UniqueKey(
-              uniqueKeyName = keyName,
-              uniqueKeySlots = slots.map(Reference(_)),
-            )
-          }),
-          annotations = annotations,
+          disjointWith = references(disjoint),
+          uniqueKeys = uniqueKeys.result(),
+          annotations = doc.annotations,
         ),
       ).copy(
-        exactMappings = sorted(metadata.exactMappings ++ exact),
-        notes = metadata.notes ++ notes.map(PlainText(_)),
+        exactMappings = sorted(doc.metadata.exactMappings, exact),
+        notes = classNotes.result(),
       )
+    }
+
+    /** Whether a disjointness group of more than two named classes goes on each member: all members
+      * are classes and the group is not exactly the children of their parent, which
+      * `children_are_mutually_disjoint` on the parent covers. The answer is cached per axiom.
+      */
+    private def isOnEachMember(a: DisjointClasses): Boolean = {
+      val known = onEachMember.get(a)
+      if (known ne null) known.booleanValue
+      else {
+        val ops = a.operands
+        val result = ops.forall(_.isInstanceOf[ClassExpr.Named]) && {
+          val members = mutable.ArrayBuffer.empty[String]
+          ops.foreach(o => members.addOne(o.asInstanceOf[ClassExpr.Named].iri))
+          // Members that became enums have no parents, so they are checked first.
+          members.forall(classParents.contains) && {
+            val p = commonParent(members)
+            (p eq null) || {
+              val siblings = mutable.HashSet.empty[String]
+              siblings.addAll(entriesOf(childrenOf, p))
+              val memberSet = mutable.HashSet.empty[String]
+              memberSet.addAll(members)
+              siblings != memberSet
+            }
+          }
+        }
+        onEachMember.put(a, java.lang.Boolean.valueOf(result))
+        result
+      }
+    }
+
+    private val onEachMember = new java.util.IdentityHashMap[DisjointClasses, java.lang.Boolean]
+
+    /** The classes each property is attached to through `rdfs:domain`. */
+    private lazy val domainClassesOf: mutable.HashMap[String, mutable.ArrayBuffer[String]] = {
+      val out = mutable.HashMap.empty[String, mutable.ArrayBuffer[String]]
+      slotsByDomain.foreachEntry { (c, properties) =>
+        properties.foreach(p => out.getOrElseUpdate(p, mutable.ArrayBuffer.empty).addOne(c))
+      }
+      out
     }
 
     /** Adds "at least one value is a `range`" to a slot. Uses `has_member`, or an `all_of` entry if
@@ -1223,10 +1830,10 @@ object OwlImporter {
       */
     private def withMember(slot: SlotDefinition, range: Option[String]): SlotDefinition = {
       val member = AnonymousSlotExpression(range = range.map(Reference(_)))
-      if slot.hasMember.isEmpty then slot.copy(required = true, hasMember = Some(member))
-      else if slot.hasMember.contains(member) || slot.allOf.exists(_.hasMember.contains(member))
-      then slot
-      else slot.copy(allOf = slot.allOf :+ AnonymousSlotExpression(hasMember = Some(member)))
+      if (slot.hasMember.isEmpty) slot.copy(required = true, hasMember = Some(member))
+      else if (slot.hasMember.contains(member) || slot.allOf.exists(_.hasMember.contains(member))) {
+        slot
+      } else slot.copy(allOf = slot.allOf :+ AnonymousSlotExpression(hasMember = Some(member)))
     }
 
     /** Turns a cardinality restriction into `slot_usage`, skipping what the slot already says. */
@@ -1236,47 +1843,89 @@ object OwlImporter {
         n: Int,
         functional: Boolean,
         restrict: (String, SlotDefinition => SlotDefinition) => Unit,
-    ): Unit = (bound, n) match {
-      case (Bound.Min, 0) => restrict(p, identity)
-      case (Bound.Min, 1) => restrict(p, _.copy(required = true))
-      case (Bound.Min, k) => restrict(p, _.copy(minimumCardinality = Some(k)))
-      case (Bound.Max, 1) if functional => restrict(p, identity)
-      case (Bound.Max, k) => restrict(p, _.copy(maximumCardinality = Some(k)))
-      case (Bound.Exact, 1) if functional => restrict(p, _.copy(required = true))
-      case (Bound.Exact, 1) => restrict(p, _.copy(required = true, maximumCardinality = Some(1)))
-      case (Bound.Exact, k) => restrict(p, _.copy(exactCardinality = Some(k)))
+    ): Unit = bound match {
+      case Bound.Min =>
+        if (n == 0) restrict(p, identity)
+        else if (n == 1) restrict(p, _.copy(required = true))
+        else restrict(p, _.copy(minimumCardinality = Some(n)))
+      case Bound.Max =>
+        if (n == 1 && functional) restrict(p, identity)
+        else restrict(p, _.copy(maximumCardinality = Some(n)))
+      case Bound.Exact =>
+        if (n == 1) {
+          if (functional) restrict(p, _.copy(required = true))
+          else restrict(p, _.copy(required = true, maximumCardinality = Some(1)))
+        } else restrict(p, _.copy(exactCardinality = Some(n)))
     }
 
-    /** The individual's permissible value, if the property's range is an enum that has it. */
-    private def enumValueText(p: String, individual: String): Option[String] =
-      slotRanges.get(p).flatMap(_.range).flatMap { r =>
-        enumMembers.find((e, _) => names.get(e).contains(r)).flatMap { (e, m) =>
-          Option.when(m._1.contains(individual))(permissibleValueText(e, individual))
-        }
+    /** The individual's permissible value, if the property's range is an enum that has it, or
+      * `null` otherwise.
+      */
+    private def enumValueText(p: String, individual: String): String = {
+      val range = slotRanges.getOrElse(p, null)
+      if ((range eq null) || range.range.isEmpty) null
+      else {
+        val e = enumByName.getOrElse(range.range.get, null)
+        if ((e ne null) && enumMemberSet(e).contains(individual))
+          permissibleValueText(e, individual)
+        else null
       }
+    }
+
+    /** Enums by name. */
+    private lazy val enumByName: mutable.HashMap[String, String] = {
+      val out = mutable.HashMap.empty[String, String]
+      enumClasses.foreach { e =>
+        val name = names.getOrElse(e, null)
+        if (name ne null) out.getOrElseUpdate(name, e)
+      }
+      out
+    }
+
+    /** The members of each enum, as a set. */
+    private val enumMemberSets = mutable.HashMap.empty[String, mutable.HashSet[String]]
+
+    private def enumMemberSet(e: String): mutable.HashSet[String] =
+      enumMemberSets.getOrElseUpdate(e, mutable.HashSet.from(enumMembers(e).members))
 
     // Enums
 
-    private lazy val pvTexts = mutable.HashMap.empty[(String, String), String]
+    /** Permissible value texts by enum and member. */
+    private lazy val pvTexts = mutable.HashMap.empty[String, mutable.HashMap[String, String]]
 
     /** Permissible value text: the `skos:notation` (where the generator writes it), else a label
       * that the IRI was built from (as `gen-owl` does), else the IRI's local name.
       */
-    private def permissibleValueText(e: String, member: String): String =
-      pvTexts.getOrElseUpdate(
-        (e, member), {
-          val annotations = annotationsOf.getOrElse(member, Nil)
-          val notation = annotations.collectFirst {
-            case Annotation(p, Literal(v, _)) if p == notationProperty => v
+    private def permissibleValueText(e: String, member: String): String = {
+      val texts = pvTexts.getOrElseUpdate(e, mutable.HashMap.empty)
+      val cached = texts.getOrElse(member, null)
+      if (cached ne null) cached
+      else {
+        val annotations = entriesOf(annotationsOf, member)
+        var text: String = null
+        annotations.foreach { a =>
+          if ((text eq null) && a.property == notationProperty) {
+            a.value match {
+              case l: Literal => text = l.value
+              case _ =>
+            }
           }
-          val labels = annotations.collect {
-            case Annotation(p, Literal(v, _)) if p == Rdfs.label.value => v
+        }
+        if (text eq null) {
+          annotations.foreach { a =>
+            if ((text eq null) && a.property == Rdfs.label.value) {
+              a.value match {
+                case l: Literal => if (defaultMeaning(e, l.value) == member) text = l.value
+                case _ =>
+              }
+            }
           }
-          notation
-            .orElse(labels.find(l => defaultMeaning(e, l) == member))
-            .getOrElse(styled(localName(member), config.permissibleValueStyle))
-        },
-      )
+        }
+        if (text eq null) text = styled(localName(member), config.permissibleValueStyle)
+        texts.update(member, text)
+        text
+      }
+    }
 
     private def defaultMeaning(e: String, text: String): String =
       Uri.synthetic(
@@ -1284,93 +1933,137 @@ object OwlImporter {
         Case.baseToPascal(Case.base(names(e))) + "." + Case.base(text).toUpperCase,
       ).original
 
-    private lazy val enums: Seq[EnumDefinition] =
-      enumMembers.toSeq.filterNot((e, _) => imported.contains(e)).map { (e, members) =>
-        val name = names(e)
-        val (metadata, annotations) = termDocumentation(e)
-        val values = members._1.map { m =>
-          val text = permissibleValueText(e, m)
-          val (pvMetadata, pvAnnotations) = documentation(
-            annotationsOf.getOrElse(m, Nil).filterNot(a =>
-              a.property == notationProperty && a.value == Literal(text),
-            ),
-          )
-          if members._2 then subClassOf.getOrElse(m, Nil).foreach((a, _) => take(a))
-          else
-            assertionsByIndividual.getOrElse(m, Nil).foreach {
-              case a @ ClassAssertion(ClassExpr.Named(`e`), _, _) => take(a)
+    private lazy val enums: mutable.ArrayBuffer[EnumDefinition] = {
+      val out = mutable.ArrayBuffer.empty[EnumDefinition]
+      enumClasses.foreach(e => if (!imported.contains(e)) out.addOne(buildEnum(e)))
+      out
+    }
+
+    private def buildEnum(e: String): EnumDefinition = {
+      val members = enumMembers(e)
+      val name = names(e)
+      val doc = termDocumentation(e)
+      val values = VectorMap.newBuilder[String, PermissibleValue]
+      members.members.foreach { m =>
+        val text = permissibleValueText(e, m)
+        val notation = Literal(text)
+        val annotations = mutable.ArrayBuffer.empty[Annotation]
+        entriesOf(annotationsOf, m).foreach { a =>
+          if (a.property != notationProperty || a.value != notation) annotations.addOne(a)
+        }
+        val pvDoc = documentation(annotations)
+        if (members.classes) entriesOf(subClassOf, m).foreach(s => take(s.axiom))
+        else {
+          entriesOf(assertionsByIndividual, m).foreach { a =>
+            a.cls match {
+              case n: ClassExpr.Named => if (n.iri == e) take(a)
               case _ =>
             }
-          declarationsByIri.getOrElse(m, Nil).foreach(take)
-          ensurePrefix(m)
-          text -> pvMetadata.applyTo(
+          }
+        }
+        entriesOf(declarationsByIri, m).foreach(take)
+        ensurePrefix(m)
+        values.addOne(
+          text -> pvDoc.metadata.applyTo(
             PermissibleValue(
               text = text,
               meaning = if (m != defaultMeaning(e, text)) Some(uri(m)) else None,
-              annotations = pvAnnotations,
+              annotations = pvDoc.annotations,
             ),
-          )
-        }
-        val (isA, mixins) = chooseParents(e, parentsOfEnum(e))
-        // Named equivalents become mappings, as for classes.
-        val exact = equivalents.getOrElse(e, Nil).collect { case (a, ClassExpr.Named(o)) =>
-          take(a)
-          ensurePrefix(o)
-          uri(o)
-        }
-        metadata.applyTo(
-          EnumDefinition(
-            name = name,
-            enumUri = explicitIri(e, NameGroup.Class),
-            permissibleValues = VectorMap.from(values),
-            isA = isA.map(Reference(_)),
-            mixins = mixins.map(Reference(_)),
-            annotations = annotations,
           ),
-        ).copy(exactMappings = sorted(metadata.exactMappings ++ exact))
+        )
       }
+      val chosen = chooseParents(e, parentsOfEnum(e))
+      // Named equivalents become mappings, as for classes.
+      val exact = mutable.ArrayBuffer.empty[UriOrCurie]
+      entriesOf(equivalents, e).foreach { x =>
+        x.other match {
+          case n: ClassExpr.Named =>
+            take(x.axiom)
+            ensurePrefix(n.iri)
+            exact.addOne(uri(n.iri))
+          case _ =>
+        }
+      }
+      doc.metadata.applyTo(
+        EnumDefinition(
+          name = name,
+          enumUri = explicitIri(e, NameGroup.Class),
+          permissibleValues = values.result(),
+          isA = if (chosen.isA ne null) Some(Reference(chosen.isA)) else None,
+          mixins = references(chosen.mixins),
+          annotations = doc.annotations,
+        ),
+      ).copy(exactMappings = sorted(doc.metadata.exactMappings, exact))
+    }
 
     /** The enums and classes an enum is a subclass of. */
-    private def parentsOfEnum(e: String): Seq[String] =
-      subClassOf.getOrElse(e, Nil).flatMap {
-        case (a, ClassExpr.Named(p)) if names.contains(p) || wellKnownClasses(p) =>
-          take(a)
-          Option.when(!wellKnownClasses(p))(p)
-        case _ => None
+    private def parentsOfEnum(e: String): mutable.ArrayBuffer[String] = {
+      val out = mutable.ArrayBuffer.empty[String]
+      entriesOf(subClassOf, e).foreach { x =>
+        x.sup match {
+          case n: ClassExpr.Named =>
+            val p = n.iri
+            val wellKnown = wellKnownClasses(p)
+            if (names.contains(p) || wellKnown) {
+              take(x.axiom)
+              if (!wellKnown) out.addOne(p)
+            }
+          case _ =>
+        }
       }
+      out
+    }
 
     // The schema
 
     private def schemaName: String =
-      config.name.orElse(
-        ontology.annotations.collectFirst {
-          case Annotation(p, Literal(v, _))
-              if p == Rdfs.label.value && v.matches("[A-Za-z_][A-Za-z0-9_-]*") =>
-            v
-        },
-      ).getOrElse(naming.defaultPrefix)
+      if (config.name.isDefined) config.name.get
+      else {
+        val it = ontology.annotations.iterator
+        while (it.hasNext) {
+          val a = it.next()
+          if (a.property == Rdfs.label.value) {
+            a.value match {
+              case l: Literal => if (l.value.matches("[A-Za-z_][A-Za-z0-9_-]*")) return l.value
+              case _ =>
+            }
+          }
+        }
+        naming.defaultPrefix
+      }
 
-    /** The term an axiom is about, if any. */
-    private def subjectOf(a: Axiom): Option[String] = a match {
-      case SubClassOf(ClassExpr.Named(c), _, _) => Some(c)
-      case EquivalentClasses(ops, _) => ops.collectFirst { case ClassExpr.Named(c) => c }
-      case DisjointUnion(c, _, _) => Some(c)
-      case HasKey(ClassExpr.Named(c), _, _) => Some(c)
-      case Domain(p, _, _) => Some(p)
-      case Range(p, _, _) => Some(p)
-      case Characteristic(p, _, _) => Some(p)
-      case SubPropertyOf(p, _, _) => Some(p)
-      case EquivalentProperties(ops, _) => ops.headOption
-      case PropertyChain(p, _, _) => Some(p)
-      case DatatypeDefinition(d, _, _) => Some(d)
-      case _ => None
+    /** The term an axiom is about, or `null` if there is none. */
+    private def subjectOf(a: Axiom): String = a match {
+      case x: SubClassOf =>
+        x.sub match {
+          case n: ClassExpr.Named => n.iri
+          case _ => null
+        }
+      case x: EquivalentClasses =>
+        val named = x.operands.find(_.isInstanceOf[ClassExpr.Named])
+        if (named.isDefined) named.get.asInstanceOf[ClassExpr.Named].iri else null
+      case x: DisjointUnion => x.cls
+      case x: HasKey =>
+        x.cls match {
+          case n: ClassExpr.Named => n.iri
+          case _ => null
+        }
+      case x: Domain => x.property
+      case x: Range => x.property
+      case x: Characteristic => x.property
+      case x: SubPropertyOf => x.sub
+      case x: EquivalentProperties => if (x.operands.nonEmpty) x.operands.head else null
+      case x: PropertyChain => x.sup
+      case x: DatatypeDefinition => x.datatype
+      case _ => null
     }
 
     /** True if the ontology says anything about the term besides using it. `rdfs:isDefinedBy`
       * doesn't count.
       */
     private def saysSomethingAbout(iri: String): Boolean =
-      annotationsOf.getOrElse(iri, Nil).exists(_.property != Rdfs.isDefinedBy.value) ||
+      entriesOf(annotationsOf, iri).exists(_.property != Rdfs.isDefinedBy.value) ||
         subClassOf.contains(iri) ||
         equivalents.contains(iri) || keysByClass.contains(iri) || domains.contains(iri) ||
         ranges.contains(iri) || characteristicsOf.contains(iri) || superProperties.contains(iri) ||
@@ -1379,129 +2072,192 @@ object OwlImporter {
 
     def result: Result = {
       // Build everything first, since building registers the prefixes the schema needs.
-      val (builtTypes, builtSlots, builtClasses, builtEnums) =
-        (types, slots, classDefinitions, enums)
+      val builtTypes = types
+      val builtSlots = slots
+      val builtClasses = classDefinitions
+      val builtEnums = enums
       val name = schemaName
       // Skip the VANN preferred namespace and prefix: the schema's default prefix covers them.
-      val (metadata, schemaAnnotations) = documentation(
-        ontology.annotations.filterNot(a =>
-          a.property == vann + "preferredNamespaceUri" || a.property == vann + "preferredNamespacePrefix",
-        ),
-      )
-      // Statements about imported terms are dropped. The imported schema defines those terms.
-      imported.keys.toSeq.sorted.filter(saysSomethingAbout).foreach { iri =>
-        warn("Statement about a term of an imported schema, which keeps its own", short(iri))
+      val schemaDocAnnotations = mutable.ArrayBuffer.empty[Annotation]
+      ontology.annotations.foreach { a =>
+        if (
+          a.property != vann + "preferredNamespaceUri" &&
+          a.property != vann + "preferredNamespacePrefix"
+        ) schemaDocAnnotations.addOne(a)
       }
-      val importedNames = imported.values.map(_._2).toSet
-      val keptClasses = builtClasses.filterNot(c => importedNames(c.name))
-      val keptSlots = builtSlots.filterNot(s => importedNames(s.name))
+      val doc = documentation(schemaDocAnnotations)
+      // Statements about imported terms are dropped. The imported schema defines those terms.
+      val importedIris = imported.keysIterator.toArray
+      java.util.Arrays.sort(importedIris, Ordering.String)
+      importedIris.foreach { iri =>
+        if (saysSomethingAbout(iri)) {
+          warn("Statement about a term of an imported schema, which keeps its own", short(iri))
+        }
+      }
+      val importedNames = mutable.HashSet.empty[String]
+      imported.valuesIterator.foreach(t => importedNames.addOne(t.name))
+      val keptClasses = mutable.ArrayBuffer.empty[ClassDefinition]
+      builtClasses.foreach(c => if (!importedNames(c.name)) keptClasses.addOne(c))
+      val keptSlots = mutable.ArrayBuffer.empty[SlotDefinition]
+      builtSlots.foreach(s => if (!importedNames(s.name)) keptSlots.addOne(s))
       // Keep a type only if it is used or declared. Others appear only in dropped axioms.
-      def rangesIn(s: SlotDefinition): Seq[String] =
-        (s.range.toSeq ++ s.anyOf.flatMap(_.range) ++ s.hasMember.flatMap(_.range) ++
-          s.allOf.flatMap(_.hasMember).flatMap(_.range)).map(_.value)
-      val usedTypes = (keptSlots.flatMap(rangesIn) ++
-        keptClasses.flatMap(c => (c.slotUsage.values ++ c.attributes.values).flatMap(rangesIn)) ++
-        builtTypes.flatMap(_.typeof.map(_.value))).toSet
-      val keptTypes = builtTypes.filter(t =>
-        usedTypes(t.name) || naming.iriOf.get(t.name).exists(isDeclared(_, EntityKind.Datatype)),
-      )
+      val usedTypes = mutable.HashSet.empty[String]
+      def useRangesIn(s: SlotDefinition): Unit = {
+        if (s.range.isDefined) usedTypes.addOne(s.range.get.value)
+        s.anyOf.foreach(x => if (x.range.isDefined) usedTypes.addOne(x.range.get.value))
+        if (s.hasMember.isDefined && s.hasMember.get.range.isDefined) {
+          usedTypes.addOne(s.hasMember.get.range.get.value)
+        }
+        s.allOf.foreach { x =>
+          if (x.hasMember.isDefined && x.hasMember.get.range.isDefined) {
+            usedTypes.addOne(x.hasMember.get.range.get.value)
+          }
+        }
+      }
+      keptSlots.foreach(useRangesIn)
+      keptClasses.foreach { c =>
+        c.slotUsage.valuesIterator.foreach(useRangesIn)
+        c.attributes.valuesIterator.foreach(useRangesIn)
+      }
+      builtTypes.foreach(t => if (t.typeof.isDefined) usedTypes.addOne(t.typeof.get.value))
+      val keptTypes = mutable.ArrayBuffer.empty[TypeDefinition]
+      builtTypes.foreach { t =>
+        if (
+          usedTypes(t.name) ||
+          naming.iriOf.get(t.name).exists(isDeclared(_, EntityKind.Datatype))
+        ) keptTypes.addOne(t)
+      }
       def isAny(s: SlotDefinition) =
         s.range.exists(_.value == anyClass) || s.anyOf.exists(_.range.exists(_.value == anyClass))
-      val usesAny = keptSlots.exists(isAny) ||
-        keptClasses.exists(c => (c.slotUsage.values ++ c.attributes.values).exists(isAny))
+      val usesAny = keptSlots.exists(isAny) || keptClasses.exists(c =>
+        c.slotUsage.valuesIterator.exists(isAny) || c.attributes.valuesIterator.exists(isAny),
+      )
 
       // Warn about every axiom that was not used.
-      unhandled.foreach {
+      foreachUnhandled {
         case _: Declaration =>
         // A declaration alone is not worth reporting.
-        case a if subjectOf(a).exists(imported.contains) =>
-        case a: ClassAssertion if enumIndividuals(a.individual) =>
-        case ClassAssertion(cls, i, _) =>
-          warn("Individual, which is not part of an enum", s"$i: ${render(cls)}")
+        case a if {
+              val subject = subjectOf(a)
+              (subject ne null) && imported.contains(subject)
+            } =>
+        case a: ClassAssertion =>
+          if (!enumIndividuals(a.individual)) {
+            warn("Individual, which is not part of an enum", s"${a.individual}: ${render(a.cls)}")
+          }
         case a: PropertyAssertion =>
           warn("Property value of an individual", s"${a.individual} ${a.property}")
         case a: SubClassOf => warn("Class axiom that LinkML cannot express", render(a))
         case a => warn(s"${a.productPrefix} axiom that LinkML cannot express", render(a))
       }
-      unparsed.groupBy(_.pred.value).toSeq.sortBy(_._1).foreach { (p, ts) =>
-        warn("RDF that is not OWL", s"${ts.size} triples with $p")
+      val unparsedCounts = mutable.HashMap.empty[String, Int]
+      unparsed.foreach { t =>
+        val p = t.pred.value
+        unparsedCounts.update(p, unparsedCounts.getOrElse(p, 0) + 1)
+      }
+      val unparsedProperties = unparsedCounts.keysIterator.toArray
+      java.util.Arrays.sort(unparsedProperties, Ordering.String)
+      unparsedProperties.foreach { p =>
+        warn("RDF that is not OWL", s"${unparsedCounts(p)} triples with $p")
       }
 
       // Without an ontology IRI, use the namespace. That is how others import such vocabularies
       // (e.g. DC terms).
       val schemaId =
-        config.schemaId.orElse(ontology.iri).getOrElse(defaultNamespace.stripSuffix("#"))
+        if (config.schemaId.isDefined) config.schemaId.get
+        else if (ontology.iri.isDefined) ontology.iri.get
+        else defaultNamespace.stripSuffix("#")
       if (!UriCurieValidator.isValidUri(schemaId))
         throw new SchemaConversionException(
           s"The schema id <$schemaId> isn't a valid URI. Set another one with `--schema-id`, or " +
             "with `schema_id` in the config",
         )
-      val schema = metadata.copy(
-        version = metadata.version.orElse(ontology.versionIri),
-        inLanguage = metadata.inLanguage.orElse(reader.language),
+      val declaredPrefixes = VectorMap.newBuilder[String, Prefix]
+      naming.declared.foreach(e => declaredPrefixes.addOne(e._1 -> Prefix(e._1, Uri(e._2))))
+      val imports = Vector.newBuilder[UriOrCurie]
+      imports.addOne(Uri(linkmlNs.concat("types")))
+      // Import `Any` from LinkML so schemas that import each other don't each define their own.
+      if (usesAny) imports.addOne(Uri(linkmlNs.concat("extended_types")))
+      importRefs.foreach(r => imports.addOne(importOf(r)))
+      val classMap = VectorMap.newBuilder[String, ClassDefinition]
+      keptClasses.foreach(c => classMap.addOne(c.name -> c))
+      val slotMap = VectorMap.newBuilder[String, SlotDefinition]
+      keptSlots.foreach(s => slotMap.addOne(s.name -> s))
+      val enumMap = VectorMap.newBuilder[String, EnumDefinition]
+      builtEnums.foreach(e => if (!importedNames(e.name)) enumMap.addOne(e.name -> e))
+      val typeMap = VectorMap.newBuilder[String, TypeDefinition]
+      keptTypes.foreach(t => typeMap.addOne(t.name -> t))
+      val schema = doc.metadata.copy(
+        version = doc.metadata.version.orElse(ontology.versionIri),
+        inLanguage = doc.metadata.inLanguage.orElse(reader.language),
       ).applyTo(
         SchemaDefinition(
           id = Uri(schemaId),
           name = name,
-          prefixes = VectorMap.from(naming.declared.map((p, ns) => p -> Prefix(p, Uri(ns)))),
+          prefixes = declaredPrefixes.result(),
           defaultPrefix = Some(naming.defaultPrefix),
           defaultRange = Some(Reference("string")),
-          imports = {
-            val b = Seq.newBuilder[UriOrCurie]
-            b.addOne(Uri(linkmlNs.concat("types")))
-            // Import `Any` from LinkML so schemas that import each other don't each define their
-            // own.
-            if (usesAny) b.addOne(Uri(linkmlNs.concat("extended_types")))
-            importRefs.foreach(r => b.addOne(importOf(r)))
-            b.result()
-          },
-          classes = VectorMap.from(keptClasses.map(c => c.name -> c)),
-          slotDefinitions = VectorMap.from(keptSlots.map(s => s.name -> s)),
-          enums = VectorMap.from(
-            builtEnums.filterNot(e => importedNames(e.name)).map(e => e.name -> e),
-          ),
-          types = VectorMap.from(keptTypes.map(t => t.name -> t)),
-          annotations = schemaAnnotations,
+          imports = imports.result(),
+          classes = classMap.result(),
+          slotDefinitions = slotMap.result(),
+          enums = enumMap.result(),
+          types = typeMap.result(),
+          annotations = doc.annotations,
         ),
       )
       // Keep only used prefixes. Some were made for terms that ended up not needing one, such as
       // imported terms.
       // The id and the namespaces are of type `uri`, so they are written in full.
-      val used = prefixesIn(schema.copy(id = Uri(""), prefixes = VectorMap.empty)).toSet ++
-        config.prefixMap.keySet + naming.defaultPrefix
-      val prefixes = schema.prefixes.filter((p, _) => used(p))
-      prefixes.values.foreach { p =>
+      val used = mutable.HashSet.empty[String]
+      addPrefixesIn(schema.copy(id = Uri(""), prefixes = VectorMap.empty), used)
+      used.addAll(config.prefixMap.keysIterator)
+      used.addOne(naming.defaultPrefix)
+      val prefixes = schema.prefixes.filter(e => used(e._1))
+      prefixes.valuesIterator.foreach { p =>
         val ns = p.prefixReference.original
         if (!UriCurieValidator.isValidUri(ns))
           throw new SchemaConversionException(
             s"The namespace <$ns> of the prefix '${p.prefixPrefix}' isn't a valid URI",
           )
       }
-      Result(
-        schema.copy(prefixes = prefixes),
-        warnings.toSeq.map { (kind, details) =>
-          val shown = details.distinct.take(5).mkString("; ")
-          val more =
-            if details.distinct.size > 5 then s"; and ${details.distinct.size - 5} more" else ""
-          s"$kind (${details.distinct.size}): $shown$more"
-        },
-      )
+      val report = Vector.newBuilder[String]
+      warningKinds.foreach { kind =>
+        val details = mutable.ArrayBuffer.empty[String]
+        val seen = mutable.HashSet.empty[String]
+        warnings(kind).foreach(d => if (seen.add(d)) details.addOne(d))
+        val line = new java.lang.StringBuilder(kind).append(" (").append(details.length)
+          .append("): ")
+        var i = 0
+        while (i < details.length && i < 5) {
+          if (i > 0) line.append("; ")
+          line.append(details(i))
+          i += 1
+        }
+        if (details.length > 5) line.append("; and ").append(details.length - 5).append(" more")
+        report.addOne(line.toString)
+      }
+      Result(schema.copy(prefixes = prefixes), report.result())
     }
 
-    /** The prefixes of the CURIEs anywhere in a value, and of the URIs that are written as CURIEs.
+    /** Adds the prefixes of the CURIEs anywhere in a value, and of the URIs that are written as
+      * CURIEs.
       */
-    private def prefixesIn(value: Any): Iterator[String] = value match {
+    private def addPrefixesIn(value: Any, out: mutable.HashSet[String]): Unit = value match {
       case u: Uri =>
         val p = naming.prefixOrNull(u.original)
-        if (p ne null) Iterator.single(p) else Iterator.empty
-      case c: Curie => Iterator(c.original.takeWhile(_ != ':'))
+        if (p ne null) out.addOne(p)
+      case c: Curie => out.addOne(beforeColon(c.original))
       // Text can be a CURIE too, such as the key of an annotation.
-      case t: String if t.indexOf(':') > 0 => Iterator(t.takeWhile(_ != ':'))
-      case m: collection.Map[?, ?] => m.iterator.flatMap((k, v) => prefixesIn(k) ++ prefixesIn(v))
-      case i: Iterable[?] => i.iterator.flatMap(prefixesIn)
-      case o: Option[?] => o.iterator.flatMap(prefixesIn)
-      case p: Product => p.productIterator.flatMap(prefixesIn)
-      case _ => Iterator.empty
+      case t: String => if (t.indexOf(':') > 0) out.addOne(beforeColon(t))
+      case m: collection.Map[?, ?] =>
+        m.foreach { e =>
+          addPrefixesIn(e._1, out)
+          addPrefixesIn(e._2, out)
+        }
+      case i: Iterable[?] => i.foreach(addPrefixesIn(_, out))
+      case o: Option[?] => if (o.isDefined) addPrefixesIn(o.get, out)
+      case p: Product => p.productIterator.foreach(addPrefixesIn(_, out))
+      case _ =>
     }
 
     // Rendering what could not be imported

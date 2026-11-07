@@ -102,10 +102,15 @@ object SchemaCodec {
     )
 
   /** The prefixes of the LinkML metamodel. */
-  private val metamodelPrefixes: Seq[(String, String)] = Prefixes.map.toSeq
+  private val metamodelPrefixes: Iterable[(String, String)] = Prefixes.map
 
   /** The prefixes of the `semweb_context` CURIE map, together with the metamodel's. */
-  private val semwebContextPrefixes: Seq[(String, String)] = metamodelPrefixes ++ Seq(
+  private val semwebContextPrefixes: Iterable[(String, String)] = Vector.newBuilder
+    .addAll(metamodelPrefixes)
+    .addAll(semwebContextOnly)
+    .result()
+
+  private def semwebContextOnly: Seq[(String, String)] = Seq(
     "dc" -> "http://purl.org/dc/terms/",
     "faldo" -> "http://biohackathon.org/resource/faldo#",
     "foaf" -> "http://xmlns.com/foaf/0.1/",

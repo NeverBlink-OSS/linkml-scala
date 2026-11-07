@@ -3,25 +3,54 @@ package eu.neverblink.linkml.rdf
 /** Character classes and IRI checks shared by the parsers. */
 private[rdf] object RdfSyntax {
 
-  /** A lookup table over byte values, true for `chars`. */
-  def table(chars: Iterable[Int]): Array[Boolean] = {
+  /** A lookup table over byte values, true for `chars`, and for ASCII letters and digits if
+    * `alphanumeric` is set.
+    */
+  def table(alphanumeric: Boolean, chars: String): Array[Boolean] = {
     val a = new Array[Boolean](256)
-    chars.foreach(a(_) = true)
+    if (alphanumeric) {
+      var c = 0
+      while (c < 0x80) {
+        if (isAsciiLetter(c) || isAsciiDigit(c)) a(c) = true
+        c += 1
+      }
+    }
+    var i = 0
+    while (i < chars.length) {
+      a(chars.charAt(i)) = true
+      i += 1
+    }
     a
   }
 
-  val Letters: Seq[Int] = ('a'.toInt to 'z') ++ ('A'.toInt to 'Z')
-  val Digits: Seq[Int] = '0'.toInt to '9'
+  /** A lookup table over byte values, true from `from` to `to` (inclusive) except for `chars`. */
+  def tableExcept(from: Int, to: Int, chars: String): Array[Boolean] = {
+    val a = new Array[Boolean](256)
+    var c = from
+    while (c <= to) {
+      a(c) = chars.indexOf(c) < 0
+      c += 1
+    }
+    a
+  }
 
   /** ASCII bytes allowed as themselves in an IRIREF: 0x21..0x7E except `<>"{}|^`\\`. */
-  val IriSafe: Array[Boolean] = table((0x21 to 0x7e).filterNot("<>\"{}|^`\\".contains(_)))
+  val IriSafe: Array[Boolean] = tableExcept(0x21, 0x7e, "<>\"{}|^`\\")
 
   /** ASCII bytes allowed as themselves in a `"`-quoted string: anything but `"`, `\\`, LF and CR.
     */
-  val DoubleQuoteSafe: Array[Boolean] = table((0 until 0x80).filterNot("\"\\\n\r".contains(_)))
+  val DoubleQuoteSafe: Array[Boolean] = tableExcept(0, 0x7f, "\"\\\n\r")
 
   /** ASCII PN_CHARS and `.`, which a blank node label may contain but not end with. */
-  val LabelChars: Array[Boolean] = table(Letters ++ Digits ++ "_-.".map(_.toInt))
+  val LabelChars: Array[Boolean] = table(alphanumeric = true, "_-.")
+
+  /** `U+` and a code point up to U+FFFF in four upper case hex digits, as in error messages. */
+  def codePoint(c: Int): String =
+    new java.lang.StringBuilder(6).append("U+").append(HexDigits.charAt((c >> 12) & 0xf))
+      .append(HexDigits.charAt((c >> 8) & 0xf)).append(HexDigits.charAt((c >> 4) & 0xf))
+      .append(HexDigits.charAt(c & 0xf)).toString
+
+  private val HexDigits = "0123456789ABCDEF"
 
   def isAsciiLetter(c: Int): Boolean = (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z')
 

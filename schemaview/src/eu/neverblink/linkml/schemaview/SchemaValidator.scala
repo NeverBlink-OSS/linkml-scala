@@ -110,7 +110,16 @@ final class SchemaValidator(using sv: SchemaView) {
       SchemaValidator.findCycles[E](elements, _.name, next).foreach { cycle =>
         issues.addOne(
           new CyclicReference(
-            cycle = cycle.iterator.map(_.name).mkString(" -> "),
+            cycle = {
+              val sb = new java.lang.StringBuilder
+              var first = true
+              cycle.foreach { e =>
+                if (!first) sb.append(" -> ")
+                first = false
+                sb.append(e.name)
+              }
+              sb.toString
+            },
             location = location(cycle.head),
             relation = relation,
           ),
@@ -320,12 +329,14 @@ final class SchemaValidator(using sv: SchemaView) {
     // Python implementation only looks at the root schema, not the imports:
     // tree_roots = [c for c in schema_view.all_classes(imports=False).values() if c.tree_root]
     // if len(tree_roots) > 0: # -> validation error
-    val treeRoots = sv.root.classes.values.collect { case x if x.treeRoot => x.name }.toSeq
-    if treeRoots.size > 1 then
+    val treeRoots = Vector.newBuilder[String]
+    sv.root.classes.valuesIterator.foreach(x => if (x.treeRoot) treeRoots.addOne(x.name))
+    val names = treeRoots.result()
+    if names.size > 1 then
       new Some(
         new MultipleTreeRoots(
           location = rootLocation,
-          classNames = treeRoots,
+          classNames = names,
         ),
       )
     else None
@@ -625,11 +636,15 @@ final class SchemaValidator(using sv: SchemaView) {
   }
 
   private lazy val unknownPrefixes: Seq[SchemaError] = {
-    sv.root.emitPrefixes.zipWithIndex.flatMap((prefix, idx) =>
-      if sv.rootPrefixes.namespaceOrNull(prefix) eq null
-      then new Some(undefinedPrefix(prefix, s"/emit_prefixes/$idx", sv.root.id))
-      else None,
-    ) ++
+    val undefinedEmitPrefixes = Vector.newBuilder[SchemaError]
+    var idx = 0
+    sv.root.emitPrefixes.foreach { prefix =>
+      if (sv.rootPrefixes.namespaceOrNull(prefix) eq null) {
+        undefinedEmitPrefixes.addOne(undefinedPrefix(prefix, s"/emit_prefixes/$idx", sv.root.id))
+      }
+      idx += 1
+    }
+    undefinedEmitPrefixes.result() ++
       sv.types.values.flatMap(tv => {
         tv._type.implicitPrefix match {
           case Some(prefix) if tv.definingPrefixes.namespaceOrNull(prefix) eq null =>
@@ -906,10 +921,10 @@ object SchemaValidator {
       elements: Iterable[E],
       key: E => String,
       next: E => Iterable[E],
-  ): List[List[E]] = {
+  ): Seq[Seq[E]] = {
     val unsorted = new CycleFinder[E](key, next, elements.size)
     elements.foreach(unsorted)
-    if (unsorted.cycles.isEmpty) Nil
+    if (!unsorted.foundCycles) Nil
     else {
       val sorted = elements.toArray[AnyRef]
       util.Arrays.sort(
@@ -922,7 +937,7 @@ object SchemaValidator {
         finder(sorted(i).asInstanceOf[E])
         i += 1
       }
-      finder.cycles.toList
+      finder.cycles.result()
     }
   }
 
@@ -931,7 +946,10 @@ object SchemaValidator {
     */
   private final class CycleFinder[E](key: E => String, next: E => Iterable[E], size: Int)
       extends (E => Unit) {
-    val cycles = new mutable.ListBuffer[List[E]]
+    val cycles = Vector.newBuilder[Seq[E]]
+    private var foundCycle = false
+
+    def foundCycles: Boolean = foundCycle
     private val path = new mutable.ArrayBuffer[E]
     // Key of each visited element -> its index in `path` while it is there, `done` after that
     private val states = new util.HashMap[String, Integer](size << 1, 0.5f)
@@ -947,13 +965,14 @@ object SchemaValidator {
         path.dropRightInPlace(1)
         states.put(k, done)
       } else if (state ne done) {
-        val cycle = new mutable.ListBuffer[E]
+        val cycle = Vector.newBuilder[E]
         var i: Int = state
         while (i < path.length) {
           cycle.addOne(path(i))
           i += 1
         }
-        cycles.addOne(cycle.addOne(e).toList)
+        cycles.addOne(cycle.addOne(e).result())
+        foundCycle = true
       }
     }
   }

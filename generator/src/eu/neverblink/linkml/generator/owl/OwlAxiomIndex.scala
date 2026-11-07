@@ -4,9 +4,12 @@ import eu.neverblink.linkml.generator.owl.Axiom.*
 import eu.neverblink.linkml.rdf.Iri
 
 import scala.collection.mutable
+import scala.runtime.IntRef
 
 /** Indexes an ontology's axioms for the importer and tracks which ones it has turned into LinkML.
   * The importer reports the ones left over.
+  *
+  * The entries of each index are in the order of the axioms.
   */
 private[owl] final class OwlAxiomIndex(val axioms: Seq[Axiom]) {
   import OwlAxiomIndex.*
@@ -15,154 +18,225 @@ private[owl] final class OwlAxiomIndex(val axioms: Seq[Axiom]) {
 
   /** Marks an axiom as turned into LinkML and returns it. */
   def take[A <: Axiom](a: A): A = {
-    handled += a
+    handled.addOne(a)
     a
   }
 
-  def unhandled: Seq[Axiom] = axioms.filterNot(handled)
+  /** Calls `f` with each axiom that was not turned into LinkML, in order. */
+  def foreachUnhandled(f: Axiom => Unit): Unit = axioms.foreach(a => if (!handled.contains(a)) f(a))
 
-  val declared: Map[String, Set[EntityKind]] =
-    axioms.collect { case Declaration(k, iri, _) => iri -> k }.groupMap(_._1)(_._2)
-      .view.mapValues(_.toSet).toMap
+  /** The kinds each IRI is declared as, one bit per [[EntityKind]]. */
+  val declared = mutable.HashMap.empty[String, IntRef]
 
-  def isDeclared(iri: String, kind: EntityKind): Boolean =
-    declared.get(iri).exists(_.contains(kind))
+  def isDeclared(iri: String, kind: EntityKind): Boolean = {
+    val kinds = declared.getOrElse(iri, null)
+    (kinds ne null) && (kinds.elem & (1 << kind.ordinal)) != 0
+  }
 
   /** Annotations by subject. All of them are marked as handled here, and the importer reports the
     * ones it can't use itself.
     */
-  val annotationsOf: Map[String, Seq[Annotation]] =
-    axioms.collect { case a: AnnotationAssertion => take(a) }
-      .groupMap(_.subject)(_.annotation)
+  val annotationsOf = mutable.HashMap.empty[String, mutable.ArrayBuffer[Annotation]]
 
-  val subClassOf: Map[String, Seq[(SubClassOf, ClassExpr)]] =
-    axioms.collect { case a @ SubClassOf(ClassExpr.Named(s), sup, _) => s -> (a, sup) }
-      .groupMap(_._1)(_._2)
+  /** The superclasses of each named class. */
+  val subClassOf =
+    mutable.HashMap.empty[String, mutable.ArrayBuffer[(axiom: SubClassOf, sup: ClassExpr)]]
 
   /** Maps the first named class in each equivalence to the other operands. */
-  val equivalents: Map[String, Seq[(EquivalentClasses, ClassExpr)]] =
-    axioms.collect { case a: EquivalentClasses => a }.flatMap { a =>
-      a.operands.collectFirst { case ClassExpr.Named(c) => c }.toSeq.flatMap { c =>
-        a.operands.filterNot(_ == ClassExpr.Named(c)).map(other => c -> (a, other))
-      }
-    }.groupMap(_._1)(_._2)
+  val equivalents = mutable.HashMap
+    .empty[String, mutable.ArrayBuffer[(axiom: EquivalentClasses, other: ClassExpr)]]
 
-  val domains: Map[String, Seq[(Domain, ClassExpr)]] =
-    axioms.collect { case a @ Domain(p, d, _) => p -> (a, d) }.groupMap(_._1)(_._2)
+  val domains =
+    mutable.HashMap.empty[String, mutable.ArrayBuffer[(axiom: Domain, domain: ClassExpr)]]
 
-  val ranges: Map[String, Seq[(Range, Filler)]] =
-    axioms.collect { case a @ Range(p, r, _) => p -> (a, r) }.groupMap(_._1)(_._2)
+  val ranges = mutable.HashMap.empty[String, mutable.ArrayBuffer[(axiom: Range, range: Filler)]]
 
-  val characteristicsOf: Map[String, Seq[Characteristic]] =
-    axioms.collect { case a: Characteristic => a }.groupBy(_.property)
+  val characteristicsOf = mutable.HashMap.empty[String, mutable.ArrayBuffer[Characteristic]]
 
-  def isFunctional(property: String): Boolean =
-    characteristicsOf.getOrElse(property, Nil)
-      .exists(_.characteristic == PropertyCharacteristic.Functional)
+  def isFunctional(property: String): Boolean = {
+    val characteristics = characteristicsOf.getOrElse(property, null)
+    (characteristics ne null) &&
+    characteristics.exists(_.characteristic == PropertyCharacteristic.Functional)
+  }
 
-  val classAssertions: Seq[ClassAssertion] = axioms.collect { case a: ClassAssertion => a }
+  val classAssertions = mutable.ArrayBuffer.empty[ClassAssertion]
 
-  val assertionsByIndividual: Map[String, Seq[ClassAssertion]] =
-    classAssertions.groupBy(_.individual)
+  val assertionsByIndividual = mutable.HashMap.empty[String, mutable.ArrayBuffer[ClassAssertion]]
 
-  val datatypeDefinitions: Map[String, DatatypeDefinition] =
-    axioms.collect { case a: DatatypeDefinition => a.datatype -> a }.toMap
+  val datatypeDefinitions = mutable.HashMap.empty[String, DatatypeDefinition]
 
-  val namedSubclasses: Map[String, Seq[String]] =
-    subClassOf.toSeq.flatMap((sub, sups) =>
-      sups.collect { case (_, ClassExpr.Named(sup)) => sup -> sub },
-    ).groupMap(_._1)(_._2)
+  /** Classes that have a named subclass. */
+  val namedSubclasses = mutable.HashSet.empty[String]
 
-  val inEquivalence: Set[String] =
-    axioms.collect { case EquivalentClasses(ops, _) =>
-      ops.collect { case ClassExpr.Named(c) => c }
-    }
-      .flatten.toSet
+  /** Classes that are an operand of an equivalence. */
+  val inEquivalence = mutable.HashSet.empty[String]
+
+  /** Classes that are an operand of an equivalence with an operand that is not a named class. */
+  val inExpressionEquivalence = mutable.HashSet.empty[String]
 
   /** Classes that appear anywhere in the domain of some property, nested ones included. */
-  val domainClasses: Set[String] = domains.values.flatten.flatMap((_, d) => classesIn(d)).toSet
+  val domainClasses = mutable.HashSet.empty[String]
 
-  val superProperties: Map[String, Seq[(SubPropertyOf, String)]] =
-    axioms.collect { case a @ SubPropertyOf(sub, sup, _) => sub -> (a, sup) }.groupMap(_._1)(_._2)
+  val superProperties =
+    mutable.HashMap.empty[String, mutable.ArrayBuffer[(axiom: SubPropertyOf, sup: String)]]
 
-  val chains: Map[String, Seq[PropertyChain]] =
-    axioms.collect { case a: PropertyChain => a }.groupBy(_.sup)
+  val chains = mutable.HashMap.empty[String, mutable.ArrayBuffer[PropertyChain]]
 
   /** Maps the first property in each equivalence to the others. */
-  val equivalentProperties: Map[String, Seq[(EquivalentProperties, String)]] =
-    axioms.collect { case a: EquivalentProperties => a }.flatMap { a =>
-      a.operands.headOption.toSeq.flatMap(h => a.operands.tail.map(o => h -> (a, o)))
-    }.groupMap(_._1)(_._2)
+  val equivalentProperties = mutable.HashMap
+    .empty[String, mutable.ArrayBuffer[(axiom: EquivalentProperties, other: String)]]
 
-  val inverses: Seq[InverseProperties] = axioms.collect { case a: InverseProperties => a }
+  val inverses = mutable.ArrayBuffer.empty[InverseProperties]
 
-  val disjointByClass: Map[String, Seq[DisjointClasses]] =
-    axioms.collect { case a: DisjointClasses => a }
-      .flatMap(a => a.operands.collect { case ClassExpr.Named(c) => c -> a })
-      .groupMap(_._1)(_._2)
+  /** The disjointness axioms of each named class in them. */
+  val disjointByClass = mutable.HashMap.empty[String, mutable.ArrayBuffer[DisjointClasses]]
 
-  val disjointUnions: Map[String, DisjointUnion] =
-    axioms.collect { case a: DisjointUnion => a.cls -> a }.toMap
+  val disjointUnions = mutable.HashMap.empty[String, DisjointUnion]
 
-  val keysByClass: Map[String, Seq[HasKey]] =
-    axioms.collect { case a @ HasKey(ClassExpr.Named(c), _, _) => c -> a }.groupMap(_._1)(_._2)
+  val keysByClass = mutable.HashMap.empty[String, mutable.ArrayBuffer[HasKey]]
 
-  val declarationsByIri: Map[String, Seq[Declaration]] =
-    axioms.collect { case a: Declaration => a }.groupBy(_.iri)
+  val declarationsByIri = mutable.HashMap.empty[String, mutable.ArrayBuffer[Declaration]]
 
   /** Class expressions used directly in an axiom. Nested ones are not included. */
-  val expressions: Seq[ClassExpr] = axioms.flatMap {
-    case SubClassOf(a, b, _) => Seq(a, b)
-    case EquivalentClasses(ops, _) => ops
-    case DisjointClasses(ops, _) => ops
-    case DisjointUnion(c, ops, _) => ClassExpr.Named(c) +: ops
-    case Domain(_, d, _) => Seq(d)
-    case Range(_, r: ClassExpr, _) => Seq(r)
-    case HasKey(c, _, _) => Seq(c)
-    case ClassAssertion(c, _, _) => Seq(c)
-    case _ => Nil
+  val expressions = mutable.ArrayBuffer.empty[ClassExpr]
+
+  axioms.foreach {
+    case a: Declaration =>
+      declared.getOrElseUpdate(a.iri, IntRef.create(0)).elem |= 1 << a.kind.ordinal
+      add(declarationsByIri, a.iri, a)
+    case a: AnnotationAssertion => add(annotationsOf, a.subject, take(a).annotation)
+    case a: SubClassOf =>
+      a.sub match {
+        case n: ClassExpr.Named =>
+          add(subClassOf, n.iri, (axiom = a, sup = a.sup))
+          a.sup match {
+            case sup: ClassExpr.Named => namedSubclasses.addOne(sup.iri)
+            case _ =>
+          }
+        case _ =>
+      }
+      expressions.addOne(a.sub)
+      expressions.addOne(a.sup)
+    case a: EquivalentClasses =>
+      var first: ClassExpr.Named = null
+      var allNamed = true
+      a.operands.foreach {
+        case n: ClassExpr.Named =>
+          if (first eq null) first = n
+          inEquivalence.addOne(n.iri)
+        case _ => allNamed = false
+      }
+      if (!allNamed) {
+        a.operands.foreach {
+          case n: ClassExpr.Named => inExpressionEquivalence.addOne(n.iri)
+          case _ =>
+        }
+      }
+      if (first ne null) {
+        a.operands.foreach { other =>
+          if (other != first) add(equivalents, first.iri, (axiom = a, other = other))
+        }
+      }
+      expressions.addAll(a.operands)
+    case a: DisjointClasses =>
+      a.operands.foreach {
+        case n: ClassExpr.Named => add(disjointByClass, n.iri, a)
+        case _ =>
+      }
+      expressions.addAll(a.operands)
+    case a: DisjointUnion =>
+      disjointUnions.update(a.cls, a)
+      expressions.addOne(ClassExpr.Named(a.cls))
+      expressions.addAll(a.operands)
+    case a: Domain =>
+      add(domains, a.property, (axiom = a, domain = a.domain))
+      foreachClassIn(a.domain)(domainClasses.addOne)
+      expressions.addOne(a.domain)
+    case a: Range =>
+      add(ranges, a.property, (axiom = a, range = a.range))
+      a.range match {
+        case r: ClassExpr => expressions.addOne(r)
+        case _ =>
+      }
+    case a: HasKey =>
+      a.cls match {
+        case n: ClassExpr.Named => add(keysByClass, n.iri, a)
+        case _ =>
+      }
+      expressions.addOne(a.cls)
+    case a: ClassAssertion =>
+      classAssertions.addOne(a)
+      add(assertionsByIndividual, a.individual, a)
+      expressions.addOne(a.cls)
+    case a: Characteristic => add(characteristicsOf, a.property, a)
+    case a: DatatypeDefinition => datatypeDefinitions.update(a.datatype, a)
+    case a: SubPropertyOf => add(superProperties, a.sub, (axiom = a, sup = a.sup))
+    case a: PropertyChain => add(chains, a.sup, a)
+    case a: EquivalentProperties =>
+      if (a.operands.nonEmpty) {
+        val first = a.operands.head
+        a.operands.iterator.drop(1)
+          .foreach(o => add(equivalentProperties, first, (axiom = a, other = o)))
+      }
+    case a: InverseProperties => inverses.addOne(a)
+    case _ =>
   }
 }
 
 private[owl] object OwlAxiomIndex {
 
-  /** Named classes in an expression, nested ones included. */
-  def classesIn(e: Filler): Seq[String] = e match {
-    case ClassExpr.Named(iri) => Seq(iri)
-    case ClassExpr.IntersectionOf(ops) => ops.flatMap(classesIn)
-    case ClassExpr.UnionOf(ops) => ops.flatMap(classesIn)
-    case ClassExpr.ComplementOf(op) => classesIn(op)
-    case ClassExpr.SomeValuesFrom(_, f) => classesIn(f)
-    case ClassExpr.AllValuesFrom(_, f) => classesIn(f)
-    case ClassExpr.Cardinality(_, _, _, f) => f.toSeq.flatMap(classesIn)
-    case _ => Nil
+  private def add[A](
+      index: mutable.HashMap[String, mutable.ArrayBuffer[A]],
+      key: String,
+      value: A,
+  ): Unit = index.getOrElseUpdate(key, mutable.ArrayBuffer.empty).addOne(value)
+
+  /** Calls `f` with each named class in an expression, nested ones included, in order. */
+  def foreachClassIn(e: Filler)(f: String => Unit): Unit = e match {
+    case x: ClassExpr.Named => f(x.iri)
+    case x: ClassExpr.IntersectionOf => x.operands.foreach(foreachClassIn(_)(f))
+    case x: ClassExpr.UnionOf => x.operands.foreach(foreachClassIn(_)(f))
+    case x: ClassExpr.ComplementOf => foreachClassIn(x.operand)(f)
+    case x: ClassExpr.SomeValuesFrom => foreachClassIn(x.filler)(f)
+    case x: ClassExpr.AllValuesFrom => foreachClassIn(x.filler)(f)
+    case x: ClassExpr.Cardinality => if (x.filler.isDefined) foreachClassIn(x.filler.get)(f)
+    case _ =>
   }
 
-  /** Properties restricted in an expression. The flag is true for a data restriction. */
-  def propertiesIn(e: Filler): Seq[(String, Boolean)] = e match {
-    case ClassExpr.IntersectionOf(ops) => ops.flatMap(propertiesIn)
-    case ClassExpr.UnionOf(ops) => ops.flatMap(propertiesIn)
-    case ClassExpr.ComplementOf(op) => propertiesIn(op)
-    case ClassExpr.SomeValuesFrom(p, f) => (p.iri, f.isInstanceOf[DataRange]) +: propertiesIn(f)
-    case ClassExpr.AllValuesFrom(p, f) => (p.iri, f.isInstanceOf[DataRange]) +: propertiesIn(f)
-    case ClassExpr.HasValue(p, v) => Seq(p.iri -> !v.isInstanceOf[Iri])
-    case ClassExpr.HasSelf(p) => Seq(p.iri -> false)
-    case ClassExpr.Cardinality(_, _, p, f) =>
-      (p.iri, f.exists(_.isInstanceOf[DataRange])) +: f.toSeq.flatMap(propertiesIn)
-    case _ => Nil
+  /** Calls `f` with each property restricted in an expression, in order, and whether it is a data
+    * restriction.
+    */
+  def foreachPropertyIn(e: Filler)(f: (String, Boolean) => Unit): Unit = e match {
+    case x: ClassExpr.IntersectionOf => x.operands.foreach(foreachPropertyIn(_)(f))
+    case x: ClassExpr.UnionOf => x.operands.foreach(foreachPropertyIn(_)(f))
+    case x: ClassExpr.ComplementOf => foreachPropertyIn(x.operand)(f)
+    case x: ClassExpr.SomeValuesFrom =>
+      f(x.property.iri, x.filler.isInstanceOf[DataRange])
+      foreachPropertyIn(x.filler)(f)
+    case x: ClassExpr.AllValuesFrom =>
+      f(x.property.iri, x.filler.isInstanceOf[DataRange])
+      foreachPropertyIn(x.filler)(f)
+    case x: ClassExpr.HasValue => f(x.property.iri, !x.value.isInstanceOf[Iri])
+    case x: ClassExpr.HasSelf => f(x.property.iri, false)
+    case x: ClassExpr.Cardinality =>
+      val filler = x.filler
+      f(x.property.iri, filler.isDefined && filler.get.isInstanceOf[DataRange])
+      if (filler.isDefined) foreachPropertyIn(filler.get)(f)
+    case _ =>
   }
 
-  def datatypesIn(r: Filler): Seq[String] = r match {
-    case DataRange.Datatype(iri) => Seq(iri)
-    case DataRange.Restriction(iri, _) => Seq(iri)
-    case DataRange.UnionOf(ops) => ops.flatMap(datatypesIn)
-    case DataRange.IntersectionOf(ops) => ops.flatMap(datatypesIn)
-    case DataRange.ComplementOf(op) => datatypesIn(op)
-    case ClassExpr.SomeValuesFrom(_, f) => datatypesIn(f)
-    case ClassExpr.AllValuesFrom(_, f) => datatypesIn(f)
-    case ClassExpr.Cardinality(_, _, _, f) => f.toSeq.flatMap(datatypesIn)
-    case ClassExpr.IntersectionOf(ops) => ops.flatMap(datatypesIn)
-    case ClassExpr.UnionOf(ops) => ops.flatMap(datatypesIn)
-    case _ => Nil
+  /** Calls `f` with each datatype in a range or expression, nested ones included, in order. */
+  def foreachDatatypeIn(r: Filler)(f: String => Unit): Unit = r match {
+    case x: DataRange.Datatype => f(x.iri)
+    case x: DataRange.Restriction => f(x.datatype)
+    case x: DataRange.UnionOf => x.operands.foreach(foreachDatatypeIn(_)(f))
+    case x: DataRange.IntersectionOf => x.operands.foreach(foreachDatatypeIn(_)(f))
+    case x: DataRange.ComplementOf => foreachDatatypeIn(x.operand)(f)
+    case x: ClassExpr.SomeValuesFrom => foreachDatatypeIn(x.filler)(f)
+    case x: ClassExpr.AllValuesFrom => foreachDatatypeIn(x.filler)(f)
+    case x: ClassExpr.Cardinality => if (x.filler.isDefined) foreachDatatypeIn(x.filler.get)(f)
+    case x: ClassExpr.IntersectionOf => x.operands.foreach(foreachDatatypeIn(_)(f))
+    case x: ClassExpr.UnionOf => x.operands.foreach(foreachDatatypeIn(_)(f))
+    case _ =>
   }
 }

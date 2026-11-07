@@ -40,7 +40,7 @@ class OwlRdfSpec extends AnyWordSpec, Matchers {
 
     "read rdfs:Class and rdf:Property, picking the property kind from the range" in {
       val back = OwlRdfReader.read(
-        Seq(
+        Vector(
           Triple(ex("C"), Rdf.`type`, Rdfs.Class),
           Triple(ex("p"), Rdf.`type`, Rdf.Property),
           Triple(ex("p"), Rdfs.range, XmlSchema.string),
@@ -62,7 +62,7 @@ class OwlRdfSpec extends AnyWordSpec, Matchers {
       val list = BlankNode("l")
       val rest = BlankNode("r")
       val back = OwlRdfReader.read(
-        Seq(
+        Vector(
           Triple(ex("E"), Rdf.`type`, Owl.Class),
           Triple(ex("E"), Owl.oneOf, list),
           Triple(list, Rdf.first, ex("a")),
@@ -77,9 +77,40 @@ class OwlRdfSpec extends AnyWordSpec, Matchers {
       )
     }
 
+    "take the annotations of the first copy in input order when several copies match" in {
+      // Each owl:Axiom points at its own copy of the restriction, as the OWL API writes it.
+      def axiom(id: String): IndexedSeq[Triple] = Vector(
+        Triple(BlankNode(id), Rdf.`type`, Owl.Axiom),
+        Triple(BlankNode(id), Owl.annotatedSource, ex("A")),
+        Triple(BlankNode(id), Owl.annotatedProperty, Rdfs.subClassOf),
+        Triple(BlankNode(id), Owl.annotatedTarget, BlankNode(id + "-copy")),
+        Triple(BlankNode(id), Rdfs.comment, Literal(id)),
+        Triple(BlankNode(id + "-copy"), Rdf.`type`, Owl.Restriction),
+        Triple(BlankNode(id + "-copy"), Owl.onProperty, ex("p")),
+        Triple(BlankNode(id + "-copy"), Owl.someValuesFrom, ex("B")),
+      )
+      val axiomNames = Seq("first", "second", "third", "fourth", "fifth")
+      def comment(names: Seq[String]): Seq[Annotation] = {
+        val triples = Vector(
+          Triple(ex("A"), Rdf.`type`, Owl.Class),
+          Triple(ex("p"), Rdf.`type`, Owl.ObjectProperty),
+          Triple(ex("A"), Rdfs.subClassOf, BlankNode("r")),
+          Triple(BlankNode("r"), Rdf.`type`, Owl.Restriction),
+          Triple(BlankNode("r"), Owl.onProperty, ex("p")),
+          Triple(BlankNode("r"), Owl.someValuesFrom, ex("B")),
+        ) ++ names.flatMap(axiom)
+        OwlRdfReader.read(triples).ontology.axioms.collect { case a: SubClassOf => a.annotations }
+          .flatten
+      }
+      for (n <- axiomNames.indices) {
+        val names = axiomNames.drop(n) ++ axiomNames.take(n)
+        comment(names) shouldBe Seq(Annotation(Rdfs.comment.value, Literal(names.head)))
+      }
+    }
+
     "keep the triples it does not understand" in {
       val odd = Triple(BlankNode("x"), ex("p"), Literal("1"))
-      OwlRdfReader.read(Seq(odd)).unparsed shouldBe Seq(odd)
+      OwlRdfReader.read(Vector(odd)).unparsed shouldBe Seq(odd)
     }
   }
 }

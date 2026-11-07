@@ -71,6 +71,28 @@ class OwlImporterSpec extends AnyWordSpec, Matchers, OwlFixtures {
     }
   }
 
+  "importing undeclared properties" should {
+    "order their slots by IRI, whatever the order of the axioms" in {
+      val names = Seq("f", "c", "a", "e", "b", "d")
+      def slotsOf(order: Seq[String]): Seq[String] = {
+        val restrictions = order.map(n =>
+          s"[ a owl:Restriction ; owl:onProperty bk:$n ; owl:someValuesFrom bk:Other ]",
+        )
+        val ttl =
+          """@prefix bk: <https://example.org/library/> .
+            |@prefix owl: <http://www.w3.org/2002/07/owl#> .
+            |@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+            |bk:Other a owl:Class .
+            |bk:Book a owl:Class ; rdfs:subClassOf """.stripMargin + restrictions.mkString(", ") +
+            " .\n"
+        OwlImporter().importSchema(stream(ttl)).slotDefinitions.keys.toSeq
+      }
+      slotsOf(names) shouldBe names.sorted
+      slotsOf(names.reverse) shouldBe names.sorted
+      slotsOf(names.take(4)) shouldBe names.take(4).sorted
+    }
+  }
+
   "importing a class axiom" should {
     "make the named conjunct of a defining intersection the parent" in {
       val result = importing(

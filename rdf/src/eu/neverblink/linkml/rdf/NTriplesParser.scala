@@ -174,7 +174,7 @@ final class NTriplesParser private (in: InputStream, sink: RdfSink, bufferSize: 
         if (i + 1 < e && (b(i + 1) == 'u' || b(i + 1) == 'U')) i = readUchar(i, e)
         else fail("Only \\u and \\U escapes are allowed in an IRI", i)
       } else if (c >= 0x80) i = readUtf8(i, e)
-      else fail(f"Character U+$c%04X is not allowed in an IRI", i)
+      else fail("Character " + codePoint(c) + " is not allowed in an IRI", i)
     }
     val value = new String(chars, 0, nChars)
     if (!hasScheme(value)) fail("Relative IRIs are not allowed", start)

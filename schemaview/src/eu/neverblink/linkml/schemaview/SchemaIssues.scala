@@ -63,13 +63,17 @@ object SchemaIssues {
       verbose: Boolean,
       showLevel: Boolean,
   ): String = {
-    val limited = problems.take(maxProblems)
-    val stringified = limited.map(x =>
-      (if showLevel then level(x).concat(": ") else "").concat(
-        if verbose then SchemaIssues.verbose(x) else description(x),
-      ),
-    )
-    val printed = stringified.mkString("\n")
+    val sb = new java.lang.StringBuilder
+    val it = problems.iterator
+    var shown = 0
+    while (shown < maxProblems && it.hasNext) {
+      val x = it.next()
+      if (shown > 0) sb.append('\n')
+      if (showLevel) sb.append(level(x)).append(": ")
+      sb.append(if (verbose) SchemaIssues.verbose(x) else description(x))
+      shown += 1
+    }
+    val printed = sb.toString
     val restCount = problems.size - maxProblems
     if (restCount > 0) {
       s"$printed\nand $restCount more problems..."

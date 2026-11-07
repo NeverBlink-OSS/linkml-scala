@@ -189,7 +189,14 @@ object UriCurieValidator {
         c += 1
       }
     }
-    def addAll(chars: String, flags: Int): Unit = chars.foreach(c => add(c, c, flags))
+    def addAll(chars: String, flags: Int): Unit = {
+      var i = 0
+      while (i < chars.length) {
+        val c = chars.charAt(i)
+        add(c, c, flags)
+        i += 1
+      }
+    }
     add('A', 'Z', Alpha | SchemeChar | NcNameChar | RegNameChar)
     add('a', 'z', Alpha | SchemeChar | NcNameChar | RegNameChar)
     add('0', '9', Digit | HexDig | SchemeChar | NcNameChar | RegNameChar)

@@ -356,8 +356,14 @@ object ImportMap {
     else if (key.endsWith(".yml")) key.substring(0, key.length - 4)
     else key
 
+  /** @param chain
+    *   The keys followed so far, the last one first.
+    */
   private def chainError(lookupKey: String, chain: List[String], what: String): SchemaImportError =
-    Importer.importError(lookupKey, s"The import map $what: ${chain.reverse.mkString(" -> ")}")
+    Importer.importError(
+      lookupKey,
+      "The import map " + what + ": " + chain.reverse.mkString(" -> "),
+    )
 }
 
 /** An importer that applies `map` to every import, then passes the result to
