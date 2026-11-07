@@ -50,6 +50,13 @@ jobs:
       - name: Type-check and bundle the UI
         run: ./mill --no-server ui.check
 
+      # Runs against the bundle that ui.check just built.
+      - name: Run the UI browser tests
+        working-directory: ui
+        run: |
+          npx playwright install --with-deps chromium
+          npm run test:browser
+
   docs-check:
     name: Docs site build
     runs-on: ubuntu-latest

@@ -45,7 +45,7 @@
           <span class="repo-name"><span class="repo-owner">NeverBlink-OSS/</span>ohi</span>
           <span class="repo-stats" id="repoStats" hidden>
             <span class="repo-stat"><svg class="repo-stat-ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 .25a.75.75 0 0 1 .673.418l1.882 3.815 4.21.612a.75.75 0 0 1 .416 1.279l-3.046 2.97.719 4.192a.75.75 0 0 1-1.088.791L8 12.347l-3.766 1.98a.75.75 0 0 1-1.088-.79l.72-4.194L.818 6.374a.75.75 0 0 1 .416-1.28l4.21-.611L7.327.668A.75.75 0 0 1 8 .25Z"/></svg><span id="repoStars">–</span></span>
-            <span class="repo-stat"><svg class="repo-stat-ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M5 5.372v.878c0 .414.336.75.75.75h4.5a.75.75 0 0 0 .75-.75v-.878a2.25 2.25 0 1 1 1.5 0v.878a2.25 2.25 0 0 1-2.25 2.25h-1.5v2.128a2.251 2.251 0 1 1-1.5 0V8.5h-1.5A2.25 2.25 0 0 1 3.5 6.25v-.878a2.25 2.25 0 1 1 1.5 0ZM5 3.25a.75.75 0 1 0-1.5 0 .75.75 0 0 0 1.5 0Zm6.75.75a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5Zm-3 8.75a.75.75 0 1 0-1.5 0 .75.75 0 0 0 1.5 0Z"/></svg><span id="repoForks">–</span></span>
+            <span class="repo-stat repo-stat--forks"><svg class="repo-stat-ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M5 5.372v.878c0 .414.336.75.75.75h4.5a.75.75 0 0 0 .75-.75v-.878a2.25 2.25 0 1 1 1.5 0v.878a2.25 2.25 0 0 1-2.25 2.25h-1.5v2.128a2.251 2.251 0 1 1-1.5 0V8.5h-1.5A2.25 2.25 0 0 1 3.5 6.25v-.878a2.25 2.25 0 1 1 1.5 0ZM5 3.25a.75.75 0 1 0-1.5 0 .75.75 0 0 0 1.5 0Zm6.75.75a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5Zm-3 8.75a.75.75 0 1 0-1.5 0 .75.75 0 0 0 1.5 0Z"/></svg><span id="repoForks">–</span></span>
           </span>
         </span>
       </a>
@@ -65,6 +65,21 @@
         <button type="button" class="dir-btn" data-dir="fromLinkml">From LinkML</button>
         <button type="button" class="dir-btn" data-dir="toLinkml">To LinkML</button>
       </div>
+      <!-- The same choice as the toggle above, for narrow screens, where the toggle takes too much
+           of the row. styles.css shows one or the other. A list like the target picker's, without
+           the search box. -->
+      <div class="combo dir-combo" id="dirCombo">
+        <button type="button" id="dirButton" class="combo-button" aria-haspopup="listbox"
+                aria-expanded="false" aria-controls="dirList" aria-label="Conversion direction">
+          <span id="dirLabel" class="combo-label"></span>
+          <svg class="combo-caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+        </button>
+        <ul id="dirList" class="combo-popup combo-list" role="listbox" aria-label="Conversion direction"
+            tabindex="-1" hidden>
+          <li id="dir-opt-fromLinkml" class="combo-option" role="option" data-dir="fromLinkml">From LinkML</li>
+          <li id="dir-opt-toLinkml" class="combo-option" role="option" data-dir="toLinkml">To LinkML</li>
+        </ul>
+      </div>
       <div class="combo" id="targetCombo">
         <button type="button" id="targetButton" class="combo-button" aria-haspopup="listbox"
                 aria-expanded="false" aria-controls="targetPopup" aria-label="Conversion target">
@@ -78,15 +93,25 @@
           <ul id="targetList" class="combo-list" role="listbox" aria-label="Conversion target"></ul>
         </div>
       </div>
+      <!-- Only on narrow screens, where the options and Auto move into a popup that this opens. -->
+      <button type="button" id="settingsToggle" class="icon-btn settings-toggle" title="Generator settings"
+              aria-label="Generator settings" aria-expanded="false" aria-controls="settingsPanel">
+        <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+      </button>
       <div class="toolbar-right">
-        <div class="options-row" id="optionsRow"></div>
-        <label class="auto-toggle">
-          <input type="checkbox" id="autoGenerate" checked>
-          <span>Auto</span>
-        </label>
-        <button id="generateBtn" class="btn btn-primary">
+        <!-- A box of its own only in the narrow layout's popup; on wider screens styles.css dissolves
+             it, so the options and Auto sit in the toolbar row as before. -->
+        <div class="settings-panel" id="settingsPanel">
+          <div class="options-row" id="optionsRow"></div>
+          <label class="auto-toggle">
+            <input type="checkbox" id="autoGenerate" checked>
+            <span>Auto</span>
+          </label>
+        </div>
+        <button id="generateBtn" class="btn btn-primary" aria-label="Generate">
           <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2 3 14h7l-1 8 10-12h-7z"/></svg>
-          Generate
+          <!-- In a span so the narrow layout can drop it and leave the icon behind. -->
+          <span class="btn-label">Generate</span>
         </button>
       </div>
     </div>
@@ -117,6 +142,10 @@
             <button id="reverseOutput" class="icon-btn reverse-btn" hidden>
               <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 2.5 20.5 6 17 9.5"/><path d="M3.5 11v-2A3 3 0 0 1 6.5 6h14"/><path d="M7 21.5 3.5 18 7 14.5"/><path d="M20.5 13v2a3 3 0 0 1-3 3h-14"/></svg>
             </button>
+            <!-- The docs page of the generator or importer on screen; app.ts sets the link and label. -->
+            <a id="outputHelp" class="icon-btn output-help" target="_blank" rel="noopener">
+              <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.82 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>
+            </a>
             <button id="copyOutput" class="btn btn-secondary btn-sm">Copy</button>
           </div>
         </div>
@@ -235,6 +264,14 @@
     </button>
   </div>
   <div class="faq-body">
+    <a class="faq-docs" href="https://linkml.ohi.dev/docs/" target="_blank" rel="noopener">
+      <svg class="faq-docs-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+      <span class="faq-docs-text">
+        <strong>Read the full documentation</strong>
+        <span>Every generator, importer and their options</span>
+      </span>
+      <svg class="faq-docs-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17 17 7M7 7h10v10"/></svg>
+    </a>
     <section>
       <h3>What is this?</h3>
       <p>The <strong>ohi LinkML playground</strong> converts

@@ -7,7 +7,8 @@
     "build": "node build.mjs",
     "watch": "node build.mjs --watch",
     "typecheck": "tsc --noEmit",
-    "test": "node test/run.mjs"
+    "test": "node test/run.mjs",
+    "test:browser": "playwright test"
   },
   "dependencies": {
     "@codemirror/commands": "^6.7.1",
@@ -23,6 +24,7 @@
     "mermaid": "^11.16.1"
   },
   "devDependencies": {
+    "@playwright/test": "^1.64.0",
     "esbuild": "^0.24.2",
     "typescript": "^5.7.3"
   }

@@ -55,6 +55,7 @@ export type { BuildInfo } from "./linkml";
 export interface Step {
   id: string;
   label: string;
+  docs: string;
   options: Option[];
   lang: OutputLang | ((o: OptionValues) => OutputLang);
 }
@@ -108,6 +109,7 @@ export const TARGETS: Target[] = [
   {
     id: "ossie",
     label: "Apache Ossie",
+    docs: "generators/ossie/",
     lang: (o) => (o.format === "json" ? "json" : "yaml"),
     options: [
       // Defaults to `skip` for the same reason as Frictionless: a root schema may only import its
@@ -121,6 +123,7 @@ export const TARGETS: Target[] = [
   {
     id: "linkml",
     label: "Derived LinkML",
+    docs: "generators/linkml/",
     lang: (o) => (o.format === "json" ? "json" : "yaml"),
     options: [
       { key: "pruning_mode", type: "select", label: "Pruning", choices: ["tree_root", "schema", "skip"], default: "tree_root" },
@@ -134,6 +137,7 @@ export const TARGETS: Target[] = [
   {
     id: "docs",
     label: "Documentation",
+    docs: "generators/docs/",
     lang: "text",
     view: "page",
     options: [
@@ -150,6 +154,7 @@ export const TARGETS: Target[] = [
   {
     id: "erDiagram",
     label: "ER diagram",
+    docs: "generators/er-diagram/",
     lang: "text",
     view: "diagram",
     options: [
@@ -170,6 +175,7 @@ export const TARGETS: Target[] = [
   {
     id: "frictionless",
     label: "Frictionless",
+    docs: "generators/frictionless/",
     lang: "json",
     options: [
       // Defaults to `skip`: narrower modes can leave the package empty, because a root schema may
@@ -188,6 +194,7 @@ export const TARGETS: Target[] = [
   {
     id: "graphql",
     label: "GraphQL",
+    docs: "generators/graphql/",
     lang: "graphql",
     options: [
       { key: "pruning_mode", type: "select", label: "Pruning", choices: ["tree_root", "schema", "skip"], default: "tree_root" },
@@ -198,6 +205,7 @@ export const TARGETS: Target[] = [
   {
     id: "jsonSchema",
     label: "JSON Schema",
+    docs: "generators/json-schema/",
     lang: "json",
     options: [
       { key: "open", type: "checkbox", label: "Open", title: "Allow additionalProperties" },
@@ -208,6 +216,7 @@ export const TARGETS: Target[] = [
   {
     id: "translation",
     label: "Key translations",
+    docs: "generators/translation/",
     lang: "json",
     options: [
       { key: "target", "type": "select", label: "Target name form", choices: ["base", "uri", "scala", "graphql", "frictionless", "ossie", "erdiagram", "json", "typescript", "pydantic", "docs"], default: "base" },
@@ -223,6 +232,7 @@ export const TARGETS: Target[] = [
   {
     id: "lint",
     label: "Lint",
+    docs: "validation/",
     lang: "json",
     view: "report",
     options: [
@@ -233,6 +243,7 @@ export const TARGETS: Target[] = [
   {
     id: "stats",
     label: "Statistics",
+    docs: "generators/stats/",
     lang: "json",
     view: "stats",
     options: [
@@ -244,6 +255,7 @@ export const TARGETS: Target[] = [
   {
     id: "owl",
     label: "OWL 2",
+    docs: "generators/owl/",
     lang: "turtle",
     options: [
       { key: "only_root_schema", type: "checkbox", label: "Root schema only" },
@@ -256,6 +268,7 @@ export const TARGETS: Target[] = [
   {
     id: "pydantic",
     label: "Pydantic",
+    docs: "generators/pydantic/",
     lang: "python",
     options: [
       { key: "pruning_mode", type: "select", label: "Pruning", choices: ["tree_root", "schema", "skip"], default: "skip" },
@@ -268,6 +281,7 @@ export const TARGETS: Target[] = [
   {
     id: "rdfs",
     label: "RDFS",
+    docs: "generators/rdfs/",
     lang: "turtle",
     options: [
       { key: "only_classes_from_root_schema", type: "checkbox", label: "Root schema only" },
@@ -278,6 +292,7 @@ export const TARGETS: Target[] = [
   {
     id: "scala",
     label: "Scala code",
+    docs: "generators/scala/",
     lang: "scala",
     options: [
       { key: "package", type: "text", label: "Package", default: "eu.neverblink.linkml.metamodel" },
@@ -295,6 +310,7 @@ export const TARGETS: Target[] = [
   {
     id: "shacl",
     label: "SHACL",
+    docs: "generators/shacl/",
     // N-Triples is a subset of Turtle, so one mode highlights both formats.
     lang: "turtle",
     options: [
@@ -307,6 +323,7 @@ export const TARGETS: Target[] = [
   {
     id: "typescript",
     label: "TypeScript",
+    docs: "generators/typescript/",
     lang: "typescript",
     options: [
       { key: "pruning_mode", type: "select", label: "Pruning", choices: ["tree_root", "schema", "skip"], default: "skip" },
@@ -336,6 +353,7 @@ export const IMPORTERS: Importer[] = [
   {
     id: "ossie",
     label: "Apache Ossie",
+    docs: "importers/ossie/",
     inputLabel: "Ossie ontology (YAML or JSON)",
     reverses: ["ossie"],
     lang: (o) => (o.format === "json" ? "json" : "yaml"),
@@ -351,6 +369,7 @@ export const IMPORTERS: Importer[] = [
   {
     id: "owl",
     label: "OWL 2 / RDFS",
+    docs: "importers/owl/",
     inputLabel: "OWL 2 or RDFS ontology (Turtle)",
     reverses: ["owl", "rdfs"],
     inputLang: "turtle",

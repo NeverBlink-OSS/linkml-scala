@@ -62,7 +62,7 @@ The docs pages are Markdown files:
 - LinkML docs: `website/src/content/docs/`. Add a new page to the sidebar in `website/astro.config.mjs` and to the list in `index.md`. Some pages are copied into the agent skills, so after editing a page, run `./mill agents.generate` (see [Generated files](#generated-files)).
 - ohi docs: `ohi/docs/src/content/docs/`. Add a new page to the sidebar in `ohi/docs/astro.config.mjs`.
 
-CI runs `./mill website.build`, `./mill ohi.docs.build` and `./mill ui.check`. The docs builds fail on broken links between pages and to headings. `website.preview` and `ohi.docs.preview` build a site and serve the result, with search.
+CI runs `./mill website.build`, `./mill ohi.docs.build` and `./mill ui.check`, then the playground's browser tests. The docs builds fail on broken links between pages and to headings. To run the browser tests yourself, run `./mill ui.check` (or `npm run build` in `ui/`) first, then `npx playwright install chromium` once and `npm run test:browser` in `ui/`. `website.preview` and `ohi.docs.preview` build a site and serve the result, with search.
 
 The first run of any of these commands installs the npm dependencies.
 

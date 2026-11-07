@@ -214,6 +214,12 @@ const $targetPopup = $("targetPopup");
 const $targetSearch = $<HTMLInputElement>("targetSearch");
 const $targetList = $("targetList");
 const $dirToggle = $("dirToggle");
+const $dirCombo = $("dirCombo");
+const $dirButton = $<HTMLButtonElement>("dirButton");
+const $dirLabel = $("dirLabel");
+const $dirList = $("dirList");
+const $settingsToggle = $<HTMLButtonElement>("settingsToggle");
+const $settingsPanel = $("settingsPanel");
 const $inputSub = $("inputSub");
 const $outputSub = $("outputSub");
 const $optionsRow = $("optionsRow");
@@ -222,6 +228,7 @@ const $statusPill = $("statusPill");
 const $autoGenerate = $<HTMLInputElement>("autoGenerate");
 const $copyOutput = $<HTMLButtonElement>("copyOutput");
 const $reverseOutput = $<HTMLButtonElement>("reverseOutput");
+const $outputHelp = $<HTMLAnchorElement>("outputHelp");
 const $loadFrom = $<HTMLButtonElement>("loadFrom");
 const $clearInput = $<HTMLButtonElement>("clearInput");
 const $themeToggle = $<HTMLButtonElement>("themeToggle");
@@ -277,7 +284,11 @@ function pickStep(step: Step): void {
 }
 
 function renderLabels(): void {
-  const importer = direction === "toLinkml" ? (activeStep() as Importer) : null;
+  const step = activeStep();
+  $outputHelp.href = `https://linkml.ohi.dev/docs/${step.docs}`;
+  $outputHelp.title = `${step.label} documentation`;
+  $outputHelp.setAttribute("aria-label", `${step.label} documentation (opens in a new tab)`);
+  const importer = direction === "toLinkml" ? (step as Importer) : null;
   $inputSub.textContent = importer ? importer.inputLabel : "LinkML YAML";
   $outputSub.textContent = importer ? "LinkML" : "";
   // Phrased without an article, so it reads right whatever an importer calls its input format.
@@ -293,6 +304,7 @@ function renderLabels(): void {
     btn.classList.toggle("dir-btn--active", on);
     btn.setAttribute("aria-pressed", String(on));
   }
+  renderDirCombo();
 }
 
 $dirToggle.addEventListener("click", (e) => {
@@ -300,6 +312,117 @@ $dirToggle.addEventListener("click", (e) => {
   if (!btn || btn.dataset.dir === direction) return;
   direction = btn.dataset.dir as Direction;
   selectStep();
+});
+
+// ── Direction list (narrow layout) ──────────────────────────────────────────
+
+// The narrow layout's stand-in for the toggle: a list like the target picker's, with the same
+// mouse and keyboard handling, but no search box. Focus sits on the list itself while it is open.
+
+const dirOptions = [...$dirList.querySelectorAll<HTMLElement>(".combo-option")];
+/** Index into [[dirOptions]] of the option the arrow keys are on. */
+let dirActive = 0;
+
+function dirComboOpen(): boolean {
+  return !$dirList.hidden;
+}
+
+function renderDirCombo(): void {
+  for (const el of dirOptions) {
+    const on = el.dataset.dir === direction;
+    el.classList.toggle("combo-option--selected", on);
+    el.setAttribute("aria-selected", String(on));
+    if (on) $dirLabel.textContent = el.textContent;
+  }
+}
+
+function setDirActive(index: number): void {
+  dirActive = (index + dirOptions.length) % dirOptions.length;
+  dirOptions.forEach((el, i) => el.classList.toggle("combo-option--active", i === dirActive));
+  $dirList.setAttribute("aria-activedescendant", dirOptions[dirActive]!.id);
+}
+
+function openDirCombo(): void {
+  $dirList.hidden = false;
+  $dirButton.setAttribute("aria-expanded", "true");
+  setDirActive(dirOptions.findIndex((el) => el.dataset.dir === direction));
+  $dirList.focus();
+}
+
+function closeDirCombo(returnFocus = false): void {
+  if (!dirComboOpen()) return;
+  $dirList.hidden = true;
+  $dirButton.setAttribute("aria-expanded", "false");
+  if (returnFocus) $dirButton.focus();
+}
+
+function pickDirection(dir: Direction): void {
+  closeDirCombo(true);
+  if (dir === direction) return;
+  direction = dir;
+  selectStep();
+}
+
+// See the target picker's handlers for why mousedown is stopped.
+$dirButton.addEventListener("mousedown", (e) => e.preventDefault());
+$dirButton.addEventListener("click", () => {
+  if (dirComboOpen()) closeDirCombo(true);
+  else openDirCombo();
+});
+$dirButton.addEventListener("keydown", (e) => {
+  if ((e.key === "ArrowDown" || e.key === "ArrowUp") && !dirComboOpen()) {
+    e.preventDefault();
+    openDirCombo();
+  }
+});
+dirOptions.forEach((el, i) => {
+  el.addEventListener("mousedown", (e) => {
+    e.preventDefault();
+    pickDirection(el.dataset.dir as Direction);
+  });
+  el.addEventListener("mousemove", () => setDirActive(i));
+});
+$dirList.addEventListener("keydown", (e) => {
+  if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+    e.preventDefault();
+    setDirActive(dirActive + (e.key === "ArrowDown" ? 1 : -1));
+  } else if (e.key === "Enter" || e.key === " ") {
+    e.preventDefault();
+    pickDirection(dirOptions[dirActive]!.dataset.dir as Direction);
+  } else if (e.key === "Escape") {
+    e.preventDefault();
+    e.stopPropagation();
+    closeDirCombo(true);
+  }
+});
+$dirCombo.addEventListener("focusout", (e) => {
+  if (!$dirCombo.contains(e.relatedTarget as Node | null)) closeDirCombo();
+});
+
+// ── Settings popup (narrow layout) ──────────────────────────────────────────
+
+function settingsOpen(): boolean {
+  return $settingsPanel.classList.contains("settings-panel--open");
+}
+
+function setSettingsOpen(open: boolean): void {
+  $settingsPanel.classList.toggle("settings-panel--open", open);
+  $settingsToggle.setAttribute("aria-expanded", String(open));
+}
+
+$settingsToggle.addEventListener("click", () => setSettingsOpen(!settingsOpen()));
+
+// Close on a press anywhere outside the button and the popup.
+document.addEventListener("pointerdown", (e) => {
+  const target = e.target as Node;
+  if (settingsOpen() && !$settingsPanel.contains(target) && !$settingsToggle.contains(target))
+    setSettingsOpen(false);
+});
+
+$settingsPanel.addEventListener("keydown", (e) => {
+  if (e.key !== "Escape") return;
+  setSettingsOpen(false);
+  $settingsToggle.focus();
 });
 
 // ── Target combobox ─────────────────────────────────────────────────────────
@@ -513,6 +636,27 @@ function renderOptions(): void {
 }
 
 // ── Output rendering ─────────────────────────────────────────────────────
+
+// On a phone, a pair of views such as Diagram/Code moves out of the tab bar into the Output bar,
+// as a two-way switch, which saves the row the tab bar would take. A generator's files stay in the
+// tab bar, even when there are two of them. Matches the narrow layout in styles.css.
+const narrowLayout = matchMedia("(max-width: 640px)");
+const $outputHead = $outputPanel.querySelector<HTMLElement>(".panel-head")!;
+/** Whether the tab bar holds a pair of views, rather than a generator's files. */
+let tabsAreViews = false;
+
+function placeFileTabs(): void {
+  const inHead = tabsAreViews && narrowLayout.matches;
+  $fileTabs.classList.toggle("file-tabs--switch", inHead);
+  const after = inHead ? $outputHead.querySelector(".panel-title")! : $outputHead;
+  if ($fileTabs.previousElementSibling !== after) after.after($fileTabs);
+}
+narrowLayout.addEventListener("change", placeFileTabs);
+
+function setTabsAreViews(views: boolean): void {
+  tabsAreViews = views;
+  placeFileTabs();
+}
 
 function showOutputText(text: string, lang: OutputLang): void {
   hideReport();
@@ -729,6 +873,7 @@ function showDiagram(text: string): void {
   // the Copy button always hands back the Mermaid source.
   setOutput(outputView, text, "text");
 
+  setTabsAreViews(true);
   $fileTabs.hidden = false;
   $fileTabs.innerHTML = "";
   for (const [tab, label] of [["diagram", "Diagram"], ["code", "Code"]] as const) {
@@ -873,6 +1018,7 @@ function showPage(text: string, patch: PagePatch): void {
   hideStats();
   outputView.dom.classList.remove("cm-output--error");
 
+  setTabsAreViews(true);
   $fileTabs.hidden = false;
   $fileTabs.innerHTML = "";
   for (const [tab, label] of [["page", "Page"], ["code", "Code"]] as const) {
@@ -1058,6 +1204,7 @@ function showStats(stats: SchemaStats): void {
   // Keep the editor in sync while it is hidden, so Code is instant and Copy gives the JSON.
   setOutput(outputView, JSON.stringify(stats, null, 2), "json");
 
+  setTabsAreViews(true);
   $fileTabs.hidden = false;
   $fileTabs.innerHTML = "";
   for (const [tab, label] of [["stats", "Stats"], ["code", "Code"]] as const) {
@@ -1414,6 +1561,7 @@ function showFiles(target: Target, dict: Record<string, string>): void {
   if (!active || !names.includes(active)) active = names[0] ?? null;
   activeFile[target.id] = active;
 
+  setTabsAreViews(false);
   $fileTabs.hidden = names.length <= 1;
   $fileTabs.innerHTML = "";
   for (const name of names) {

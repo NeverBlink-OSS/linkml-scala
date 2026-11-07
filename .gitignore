@@ -36,6 +36,8 @@ target/
 node_modules/
 ui/public/dist/
 ui/dist/
+ui/test-results/
+ui/playwright-report/
 # Docs site: copied from ui/public/ by website/astro.config.mjs
 /website/public/favicon.svg
 /website/public/fonts/
