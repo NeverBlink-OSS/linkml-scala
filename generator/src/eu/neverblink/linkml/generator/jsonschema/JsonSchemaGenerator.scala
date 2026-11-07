@@ -453,8 +453,9 @@ object JsonSchemaGenerator {
 
   /** Joins the schemas into one, or into `allOf` if their keywords clash.
     *
-    * Keywords clash when one is set in two schemas, or when `$ref` or `type` is set in a schema
-    * other than the first non-empty one.
+    * Keywords clash when two schemas set the same one of `pattern`, `minimum`, `maximum`, `anyOf`,
+    * `oneOf`, `allOf` or `not`, or when a schema after the first non-empty one sets `$ref` or
+    * `type`. Other keywords come from the first non-empty schema only.
     */
   private def merged(schemas: Schema*): Schema = {
     var first: Schema = null
