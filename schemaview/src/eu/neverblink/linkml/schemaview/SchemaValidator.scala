@@ -602,6 +602,131 @@ final class SchemaValidator(using sv: SchemaView) {
     warnings.result()
   }
 
+  /** Warnings for each slot of a class in the root schema that allows more values than in a parent
+    * class. The LinkML spec only lets a class narrow what it inherits.
+    *
+    * Reports a range that is not derived from the parent's range with `UnrelatedSlotRange`, and a
+    * failed check of [[SchemaValidator.slotConstraintChecks]] with `LooserSlotConstraint`. Reports
+    * each slot at most once for its range and once for each check, with the first parent that
+    * allows fewer values.
+    */
+  private lazy val looserInheritedSlots: Seq[SchemaWarning] = {
+    val warnings = Vector.newBuilder[SchemaWarning]
+    val schemaId = sv.root.id
+    val checks = SchemaValidator.slotConstraintChecks
+    sv.root.classes.foreachEntry { (className, _) =>
+      val cls = sv.classes(className)
+      val parents = cls.parents
+      if (parents.nonEmpty) {
+        val derived = cls.derivedAttributes
+        var names: Array[String] = null
+        var count = 0
+        // Collect the slots that can differ from a parent. With one parent, these are the slots
+        // that the class changes with `slot_usage` or `attributes`. With more parents, merging
+        // them can change a slot that the class or any ancestor changes.
+        if (parents.lengthCompare(1) == 0) {
+          val usage = cls.cls.slotUsage
+          val attributes = cls.cls.attributes
+          names = new Array[String](usage.size + attributes.size)
+          usage.foreachEntry { (name, _) =>
+            if (derived.contains(name)) {
+              names(count) = name
+              count += 1
+            }
+          }
+          attributes.foreachEntry { (name, _) =>
+            if (derived.contains(name) && !usage.contains(name)) {
+              names(count) = name
+              count += 1
+            }
+          }
+        } else {
+          val changes = cls.slotChanges
+          names = new Array[String](changes.size)
+          changes.foreachEntry { (name, _) =>
+            if (derived.contains(name)) {
+              names(count) = name
+              count += 1
+            }
+          }
+        }
+        util.Arrays.sort(names, 0, count, Ordering.String)
+        var j = 0
+        while (j < count) {
+          val name = names(j)
+          val own = derived(name)
+          var location: IssueLocation = null
+          var rangeReported = false
+          // One bit for each check that has already reported this slot
+          var reportedChecks = 0
+          parents.foreach { parent =>
+            val inherited = parent.derivedAttributes.getOrElse(name, null)
+            // A slot that no class changes is the same object in the class and the parent
+            if ((inherited ne null) && (own ne inherited)) {
+              if (!rangeReported && !own.hasRangeDerivedFrom(inherited)) {
+                rangeReported = true
+                if (location eq null) location = slotLocation(className, cls, name, schemaId)
+                warnings.addOne(
+                  new UnrelatedSlotRange(
+                    location = location,
+                    className = className,
+                    slotName = name,
+                    slotRange = rangeNames(own),
+                    parentName = parent.name,
+                    parentRange = rangeNames(inherited),
+                  ),
+                )
+              }
+              var i = 0
+              while (i < checks.length) {
+                val check = checks(i)
+                val bit = 1 << i
+                val loosened =
+                  if ((reportedChecks & bit) == 0) check.loosened(own.slot, inherited.slot)
+                  else null
+                if (loosened ne null) {
+                  reportedChecks |= bit
+                  if (location eq null) location = slotLocation(className, cls, name, schemaId)
+                  warnings.addOne(
+                    new LooserSlotConstraint(
+                      location = location,
+                      className = className,
+                      slotName = name,
+                      metaslot = loosened.metaslot,
+                      value = loosened.value,
+                      parentName = parent.name,
+                      parentValue = loosened.parentValue,
+                    ),
+                  )
+                }
+                i += 1
+              }
+            }
+          }
+          j += 1
+        }
+      }
+    }
+    warnings.result()
+  }
+
+  /** Where a class changes a slot: its `slot_usage` or `attributes` entry, or else the class. */
+  private def slotLocation(
+      className: String,
+      cls: ClassView,
+      name: String,
+      schemaId: Uri,
+  ): IssueLocation = {
+    val pointer =
+      if (cls.cls.slotUsage.contains(name)) s"/classes/$className/slot_usage/$name"
+      else if (cls.cls.attributes.contains(name)) s"/classes/$className/attributes/$name"
+      else s"/classes/$className"
+    at(pointer, schemaId)
+  }
+
+  private def rangeNames(slot: SlotView): String =
+    slot.allowedRanges.mkString("'", "' or '", "'")
+
   private def undefinedPrefix(prefix: NcName, position: String, schemaId: Uri): SchemaError =
     UndefinedPrefix(location = at(position, schemaId), prefix = prefix)
 
@@ -775,6 +900,7 @@ final class SchemaValidator(using sv: SchemaView) {
   /** Any warnings found in the schema, if any. */
   private lazy val warnings: Seq[SchemaWarning] =
     invalidSlotUsage ++
+      looserInheritedSlots ++
       undefinedDefaultRange ++
       noTreeRoot ++
       undeclaredCuriePrefixes ++
@@ -957,6 +1083,74 @@ object SchemaValidator {
       }
     }
   }
+
+  /** A metaslot that allows more values than in a parent: its name, and its values in the class and
+    * in the parent.
+    */
+  final private class Loosened(val metaslot: String, val value: String, val parentValue: String)
+
+  /** A check that one metaslot of an inherited slot doesn't allow more values than in a parent. */
+  abstract private class SlotConstraintCheck {
+
+    /** The metaslot of `own` that allows more values than in `parent`, or `null` if none. */
+    def loosened(own: SlotDefinition, parent: SlotDefinition): Loosened
+  }
+
+  /** A check of the lowest or the highest number of values of a slot.
+    *
+    * The JSON Schema, SHACL and Pydantic generators read `minimum_cardinality` or
+    * `maximum_cardinality` before `exact_cardinality`, and the OWL generator reads them the other
+    * way round. A slot has both when a class sets one and inherits the other, so this checks both
+    * orders.
+    */
+  final private class CardinalityCheck(metaslot: String, isMaximum: Boolean)
+      extends SlotConstraintCheck {
+    def loosened(own: SlotDefinition, parent: SlotDefinition): Loosened = {
+      val ownLimit = limit(own)
+      val parentLimit = limit(parent)
+      val ownCount = count(ownLimit.orElseFast(own.exactCardinality))
+      val parentCount = count(parentLimit.orElseFast(parent.exactCardinality))
+      if (isLooser(ownCount, parentCount)) {
+        val name =
+          if (ownLimit.isEmpty && own.exactCardinality.isDefined) "exact_cardinality" else metaslot
+        new Loosened(name, show(ownCount), show(parentCount))
+      } else {
+        val ownExactCount = count(own.exactCardinality.orElseFast(ownLimit))
+        val parentExactCount = count(parent.exactCardinality.orElseFast(parentLimit))
+        if (isLooser(ownExactCount, parentExactCount)) {
+          val name = if (own.exactCardinality.isDefined) "exact_cardinality" else metaslot
+          new Loosened(name, show(ownExactCount), show(parentExactCount))
+        } else null
+      }
+    }
+
+    private def limit(slot: SlotDefinition): Option[Int] =
+      if (isMaximum) slot.maximumCardinality else slot.minimumCardinality
+
+    // Without a limit, the minimum is 0 and the maximum is unlimited
+    private def count(limit: Option[Int]): Int =
+      limit.getOrElseFast(if (isMaximum) Int.MaxValue else 0)
+
+    private def isLooser(own: Int, parent: Int): Boolean =
+      if (isMaximum) own > parent else own < parent
+
+    private def show(count: Int): String =
+      if (count == Int.MaxValue) "unlimited" else String.valueOf(count)
+  }
+
+  /** The checks for `LooserSlotConstraint`. Holds at most 32 checks, as
+    * [[SchemaValidator.looserInheritedSlots]] keeps one bit for each.
+    */
+  private val slotConstraintChecks: Array[SlotConstraintCheck] = Array(
+    new SlotConstraintCheck {
+      def loosened(own: SlotDefinition, parent: SlotDefinition): Loosened =
+        if (own.multivalued && !parent.multivalued) {
+          new Loosened("multivalued", "true", "false")
+        } else null
+    },
+    new CardinalityCheck("minimum_cardinality", isMaximum = false),
+    new CardinalityCheck("maximum_cardinality", isMaximum = true),
+  )
 
   /** Macro validator instance which will be used in the [[SchemaValidator]] */
   private val macroValidator: MacroValidator[SchemaDefinition] =

@@ -501,6 +501,95 @@ classes:
           Class '{class_name}' has declared 'slot_usage' for slots that are not defined for its ancestors.
           These slots will not be included: {slot_names}
 
+  UnrelatedSlotRange:
+    is_a: SchemaWarning
+    description: >-
+      A class gives an inherited slot a range that is not derived from the range of a parent. The
+      LinkML specification only allows a class to narrow an inherited range: to a subclass of it,
+      or to a type with it as a `typeof` ancestor. A member of a `union_of` type, any range in
+      place of `linkml:Any`, `ncname` in place of `string`, and `uri` or `curie` in place of
+      `uriorcurie` narrow it too.
+    slots:
+      - class_name
+    attributes:
+      slot_name:
+        range: string
+        required: true
+        title: slot name
+      slot_range:
+        range: string
+        required: true
+        title: slot range
+        description: The ranges that the class allows, joined with " or ".
+      parent_name:
+        range: string
+        required: true
+        title: parent name
+      parent_range:
+        range: string
+        required: true
+        title: parent range
+        description: The ranges that the parent allows, joined with " or ".
+    slot_usage:
+      message:
+        equals_expression: >-
+          Class '{class_name}' gives slot '{slot_name}' the range {slot_range}, which is not
+          derived from the range {parent_range} of its parent '{parent_name}'
+      details:
+        equals_expression: >-
+          Class '{class_name}' gives slot '{slot_name}' the range {slot_range}, which is not
+          derived from the range {parent_range} of its parent '{parent_name}'. A class can only
+          narrow an inherited range: to a subclass of it, or to a type with it as a 'typeof'
+          ancestor. Generators whose classes inherit fields, like those for GraphQL, Scala and
+          OWL, don't describe the slot or its range in the parents.
+
+  LooserSlotConstraint:
+    is_a: SchemaWarning
+    description: >-
+      An inherited slot of a class has a metaslot value that allows more values than a parent
+      has, so some data that is valid for the class is not valid for the parent. The value can
+      come from the class or from another parent, like a mixin. It is reported for `multivalued`
+      set to true when a parent has it false, and for a lower minimum or a higher maximum number
+      of values. When a slot has both `exact_cardinality` and `minimum_cardinality` or
+      `maximum_cardinality`, generators don't agree on which one counts, so both are checked.
+    slots:
+      - class_name
+    attributes:
+      slot_name:
+        range: string
+        required: true
+        title: slot name
+      metaslot:
+        range: string
+        required: true
+        title: metaslot
+        description: The name of the metaslot, like `multivalued`.
+      value:
+        range: string
+        required: true
+        title: value
+        description: The value of the metaslot in the class.
+      parent_name:
+        range: string
+        required: true
+        title: parent name
+      parent_value:
+        range: string
+        required: true
+        title: parent value
+        description: The value of the metaslot in the parent.
+    slot_usage:
+      message:
+        equals_expression: >-
+          Slot '{slot_name}' of class '{class_name}' has '{metaslot}' {value}, which allows more
+          values than {parent_value} in its parent '{parent_name}'
+      details:
+        equals_expression: >-
+          Slot '{slot_name}' of class '{class_name}' has '{metaslot}' {value}, which allows more
+          values than {parent_value} in its parent '{parent_name}'. So some data that is valid
+          for '{class_name}' is not valid for '{parent_name}'. The value can come from the class
+          or from another parent, like a mixin. A class can only narrow what it inherits.
+
   NonStandardSeparator:
     is_a: SchemaWarning
     description: |

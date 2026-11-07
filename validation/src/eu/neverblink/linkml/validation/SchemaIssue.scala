@@ -29,6 +29,7 @@ import eu.neverblink.linkml.runtime.*
   typeDesignator.Member(classOf[InvalidRange], "InvalidRange"),
   typeDesignator.Member(classOf[InvalidSlotUsage], "InvalidSlotUsage"),
   typeDesignator.Member(classOf[InvalidUriOrCurie], "InvalidUriOrCurie"),
+  typeDesignator.Member(classOf[LooserSlotConstraint], "LooserSlotConstraint"),
   typeDesignator.Member(classOf[MissingRecommendedSlot], "MissingRecommendedSlot"),
   typeDesignator.Member(classOf[MultipleKeyOrIdSlots], "MultipleKeyOrIdSlots"),
   typeDesignator.Member(classOf[MultipleTreeRoots], "MultipleTreeRoots"),
@@ -49,6 +50,7 @@ import eu.neverblink.linkml.runtime.*
   typeDesignator.Member(classOf[UnknownReference], "UnknownReference"),
   typeDesignator.Member(classOf[UnknownStringReference], "UnknownStringReference"),
   typeDesignator.Member(classOf[UnquotedStringDefault], "UnquotedStringDefault"),
+  typeDesignator.Member(classOf[UnrelatedSlotRange], "UnrelatedSlotRange"),
   typeDesignator.Member(classOf[UnwritableUri], "UnwritableUri"),
 )
 abstract class SchemaIssue {

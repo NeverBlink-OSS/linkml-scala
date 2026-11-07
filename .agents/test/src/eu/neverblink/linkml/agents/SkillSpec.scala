@@ -113,18 +113,29 @@ class SkillSpec extends AnyWordSpec, Matchers {
             // Like `validate --strict`: warnings fail too. Warnings about elements without a
             // description are skipped, as they are noise for a fragment.
             withClue(ujson.write(doc, indent = 2)) {
-              issues.filter {
+              val problems = issues.filter {
                 case _: MissingRecommendedSlot => false
                 case _ => true
-              }.map(_.infer()).map(i =>
-                s"${i.severity}: ${SchemaIssues.description(i)}",
-              ) shouldBe empty
+              }.map(_.infer())
+              expectedWarnings.get((file = md.last, block = block)) match {
+                case Some(issueType) => problems.map(_.issueType) shouldBe Seq(issueType)
+                case _ =>
+                  problems.map(i => s"${i.severity}: ${SchemaIssues.description(i)}") shouldBe empty
+              }
             }
           }
     }
 }
 
 object SkillSpec {
+
+  /** Examples that show a warning on purpose, by file and block number, with the type of their only
+    * warning.
+    */
+  private val expectedWarnings: Map[(file: String, block: Int), String] = Map(
+    // A class makes an inherited single-valued slot multivalued
+    (file = "210-slot-usage-inheritance.md", block = 4) -> "LooserSlotConstraint",
+  )
   // https://agentskills.io/specification - anything else is rejected by the claude.ai Skills API
   // and is meaningless to Codex.
   private val allowedFrontmatter =

@@ -745,6 +745,9 @@ class LinkMlGeneratorSpec extends AnyWordSpec, Matchers {
       }
     }
 
+    def lintMessages(sv: SchemaView): Seq[Option[String]] =
+      lintProblemsExceptMissingRecommendedSlots(sv).map(_.message)
+
     "generate all catalogue models without errors" when {
       for entry <- ModelCatalogue.all do
         s"model '${entry.model.root.name}'" in {
@@ -756,13 +759,14 @@ class LinkMlGeneratorSpec extends AnyWordSpec, Matchers {
           lintProblemsExceptMissingRecommendedSlots(
             SchemaView.single(LinkMlGenerator(using entry.model).generate()),
           ) shouldBe empty
-          lintProblemsExceptMissingRecommendedSlots(
+          // Without derivation, the output keeps the inheritance of the model, and so its warnings
+          lintMessages(
             SchemaView.single(
               LinkMlGenerator(using entry.model).generate(
                 LinkMlGeneratorOptions(skipClassDerivation = true),
               ),
             ),
-          ) shouldBe empty
+          ) shouldBe lintMessages(entry.model)
         }
     }
   }

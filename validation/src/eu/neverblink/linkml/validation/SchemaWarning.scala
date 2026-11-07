@@ -12,6 +12,7 @@ import eu.neverblink.linkml.runtime.*
   "issue_type",
   typeDesignator.Member(classOf[FlankingSeparator], "FlankingSeparator"),
   typeDesignator.Member(classOf[InvalidSlotUsage], "InvalidSlotUsage"),
+  typeDesignator.Member(classOf[LooserSlotConstraint], "LooserSlotConstraint"),
   typeDesignator.Member(classOf[MissingRecommendedSlot], "MissingRecommendedSlot"),
   typeDesignator.Member(classOf[NoTreeRootClass], "NoTreeRootClass"),
   typeDesignator.Member(classOf[NonStandardSeparator], "NonStandardSeparator"),
@@ -19,6 +20,7 @@ import eu.neverblink.linkml.runtime.*
   typeDesignator.Member(classOf[UndeclaredCuriePrefix], "UndeclaredCuriePrefix"),
   typeDesignator.Member(classOf[UndefinedDefaultRange], "UndefinedDefaultRange"),
   typeDesignator.Member(classOf[UnquotedStringDefault], "UnquotedStringDefault"),
+  typeDesignator.Member(classOf[UnrelatedSlotRange], "UnrelatedSlotRange"),
   typeDesignator.Member(classOf[UnwritableUri], "UnwritableUri"),
 )
 abstract class SchemaWarning extends SchemaIssue {

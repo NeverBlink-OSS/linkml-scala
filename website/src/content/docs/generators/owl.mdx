@@ -27,7 +27,7 @@ The generator aims for OWL 2 DL. SAREF, SOSA, gist, PROV-O and D3FEND, after a t
 | `prefixes`, `default_prefix`                               | `sh:declare` on the ontology, and `vann:preferredNamespacePrefix` / `vann:preferredNamespaceUri`       |
 | class                                                      | `owl:Class`                                                                                            |
 | `is_a`, `mixins`                                           | `rdfs:subClassOf` the parents                                                                          |
-| a slot of the class (in `slots`, `attributes`, `slot_usage`) | restrictions on the class: `owl:allValuesFrom` the range, cardinalities, `owl:hasValue`, `owl:someValuesFrom` |
+| a slot of the class (in `slots`, `attributes`, `slot_usage`), or an inherited slot that a parent doesn't fully describe | restrictions on the class: `owl:allValuesFrom` the range, cardinalities, `owl:hasValue`, `owl:someValuesFrom` |
 | `required`, `minimum_cardinality`, `maximum_cardinality`   | `owl:minCardinality`, `owl:maxCardinality`, or `owl:cardinality` when the two are equal. On a transitive slot, its parents and inverses, which OWL 2 DL allows no counts on, `required` is `owl:someValuesFrom owl:Thing` and the counts are skipped |
 | a single-valued slot                                       | `owl:maxCardinality 1`, and `owl:FunctionalProperty` when it is single-valued everywhere it is used. A `langstring` slot gets `owl:maxQualifiedCardinality 1` on `xsd:string` instead, as a text in several languages is one literal per language |
 | `equals_string`, `equals_number`                           | `owl:hasValue`                                                                                         |
@@ -64,7 +64,7 @@ These differences are in place mostly to make the OWL describe the same RDF data
 - **Slots with a `uri` or `uriorcurie` range, or with an `implicit_prefix`, are object properties without a range**, since their values are IRIs in RDF, as in the SHACL generator.
 - **Permissible values are individuals** of a class defined by `owl:oneOf`. `gen-owl` makes them classes by default, which is still possible in ohi LinkML with the `--permissible-values class` option.
 - **Descriptions are `rdfs:comment`** by default, rather than the metamodel's `skos:definition`. If you select the `--metadata-profile linkml` option, descriptions will be written as `skos:definition`, as `gen-owl` does by default.
-- **`owl:allValuesFrom` restrictions that repeat a property's range are kept** for the slots a class lists itself. They record which classes use which slots, which the importer needs. A class that only refines an inherited slot in `slot_usage` gets one only when it narrows the range.
+- **`owl:allValuesFrom` restrictions that repeat a property's range are kept** for the slots a class lists itself. They record which classes use which slots, which the importer needs. A class that only refines an inherited slot in `slot_usage` gets one only when it narrows the range, or when a parent leaves the range out.
 - `type_designator` rules, `rules` and `classification_rules` are not written.
 
 **Improvements over Python `gen-owl`:**
@@ -73,5 +73,6 @@ These differences are in place mostly to make the OWL describe the same RDF data
 - **An abstract class with only one subclass gets no covering axiom.** Consider class B, which is a subclass of an abstract class A. `gen-owl` in this case writes "every A is a B", and since every B is already an A, a reasoner treats the two classes as the same.
 - **A single-valued slot is also marked as an `owl:FunctionalProperty`** when all classes that use this property treat it as single-valued.
 - **An attribute's property gets an `rdfs:range`** when every use of it has the same range.
+- **A class doesn't state restrictions that a subclass's `slot_usage` breaks.** When a subclass makes a slot multivalued or gives it an unrelated range, the class leaves out the `owl:maxCardinality 1` or `owl:allValuesFrom`, and the subclasses that keep them state them. A `slot_uri` in a `slot_usage` is declared as a property, and the class states all restrictions of the slot on it. See [Slots that a class changes](/docs/slot-usage-inheritance/#slots-that-a-class-changes).
 - **The announced new defaults are used**: no `owl:minCardinality 0`, which says nothing, and one `owl:cardinality` where the lower and upper bounds are equal.
 - **A `license` that is a link is written as an IRI**.

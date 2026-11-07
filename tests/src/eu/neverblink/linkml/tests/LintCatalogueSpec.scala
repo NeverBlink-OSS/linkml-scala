@@ -4,6 +4,12 @@ import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 
 class LintCatalogueSpec extends AnyWordSpec, Matchers {
+
+  /** Models that show a warning on purpose, with the type of their only warning. */
+  private val expectedWarnings: Map[String, String] = Map(
+    // A class makes an inherited single-valued slot multivalued
+    "multivaluedOverride" -> "LooserSlotConstraint",
+  )
   for entry <- ModelCatalogue.allOptIn do {
     s"Model '${entry.model.root.name}'" should {
       "not use the same name for a valid and an invalid instance" in {
@@ -16,7 +22,11 @@ class LintCatalogueSpec extends AnyWordSpec, Matchers {
   for entry <- ModelCatalogue.all do {
     s"Model '${entry.model.root.name}'" should {
       "lint" in {
-        ModelCatalogue.lintProblemsExceptMissingRecommendedSlots(entry.model) shouldBe empty
+        val problems = ModelCatalogue.lintProblemsExceptMissingRecommendedSlots(entry.model)
+        expectedWarnings.get(entry.model.root.name) match {
+          case Some(issueType) => problems.map(_.issueType) shouldBe Seq(issueType)
+          case _ => problems shouldBe empty
+        }
       }
 
       "have ranks defined for tree_root" in {

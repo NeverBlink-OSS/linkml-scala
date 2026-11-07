@@ -14,3 +14,7 @@ import { Description, Options, Usage } from '../../../components/converter';
 ## Options
 
 <Options name="graphql" />
+
+## Inherited fields
+
+A type implements the interfaces of its parent classes and mixins. An interface leaves out a field when a descendant changes it in a way that GraphQL doesn't allow, such as a `slot_usage` that makes the field multivalued. Each type still has all its fields. See [Slots that a class changes](/docs/slot-usage-inheritance/#slots-that-a-class-changes).

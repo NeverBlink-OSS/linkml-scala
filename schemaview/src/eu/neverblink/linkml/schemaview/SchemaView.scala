@@ -96,14 +96,54 @@ final case class SchemaView(schemas: Seq[SchemaDefinition]) extends ReferenceRes
     immutable.ArraySeq.unsafeWrapArray(sorted)
   }
 
-  /** Names of the classes that another class names in its `is_a` or `mixins`. */
-  private[schemaview] lazy val classesWithDescendants: Set[String] = {
-    val names = Set.newBuilder[String]
-    classes.foreachEntry((_, classView) =>
-      classView.parents.foreach(parent => names.addOne(parent.name)),
-    )
-    names.result()
+  /** The classes that name a class in their `is_a` or `mixins`, keyed by the name of that class, in
+    * the common order. Classes without children are not in the map.
+    */
+  private[schemaview] lazy val childrenByName: collection.Map[String, collection.Seq[ClassView]] = {
+    val children = mutable.HashMap.empty[String, mutable.ArrayBuffer[ClassView]]
+    sortedClasses.foreach { child =>
+      child.parents.foreach { parent =>
+        children.getOrElseUpdate(parent.name, new mutable.ArrayBuffer[ClassView](2)).addOne(child)
+      }
+    }
+    children
   }
+
+  /** Whether the element named `name` is the element named `ancestor`, or is derived from it: a
+    * class with it among its ancestors, or a type with it among its `typeof` ancestors.
+    *
+    * A type is also derived from:
+    *   - a type without `typeof` or constraints whose built-in type holds all its values: `string`
+    *     for `ncname`, and `uriorcurie` for `uri` and `curie`
+    *   - a `union_of` type with a member that it is derived from
+    */
+  def isDerivedFrom(name: String, ancestor: String): Boolean =
+    name == ancestor ||
+      classes.get(name).exists(_.ancestorsWithSelf.exists(_.name == ancestor)) ||
+      types.get(name).exists { t =>
+        t.ancestorsWithSelf.exists(_.name == ancestor) || {
+          val a = types.getOrElse(ancestor, null)
+          (a ne null) && (
+            isUnconstrainedBase(a._type) && holdsValuesOf(t.runtimeType, a.runtimeType) ||
+              a.unionAlternatives.exists(m => isDerivedFrom(name, m.name))
+          )
+        }
+      }
+
+  /** Whether the type has no `typeof` and no constraints on its values. */
+  private def isUnconstrainedBase(t: TypeDefinition): Boolean =
+    t.typeof.isEmpty && t.unionOf.isEmpty && t.pattern.isEmpty && t.structuredPattern.isEmpty &&
+      t.minimumValue.isEmpty && t.maximumValue.isEmpty && t.minimumLength.isEmpty &&
+      t.maximumLength.isEmpty && t.equalsString.isEmpty && t.equalsStringIn.isEmpty &&
+      t.equalsNumber.isEmpty
+
+  /** Whether all values of the built-in type `runtimeType` are values of `other`. */
+  private def holdsValuesOf(runtimeType: RuntimeType, other: RuntimeType): Boolean =
+    other match {
+      case _: StringType.type => runtimeType eq NcNameType
+      case _: UriOrCurieType.type => (runtimeType eq UriType) || (runtimeType eq CurieType)
+      case _ => false
+    }
 
   /** All enums defined in the loaded schemas, as views.
     */
@@ -330,8 +370,8 @@ final case class SchemaView(schemas: Seq[SchemaDefinition]) extends ReferenceRes
     */
   def elementOrder(el: Element): (Int, String) = (el.rank.getOrElse(Int.MaxValue), el.name)
 
-  /** Combine values for the `range` metaslot. The nearest range is used, with no check that it is
-    * derived from the inherited one, as the spec requires (LNK-237).
+  /** Combine values for the `range` metaslot. The nearest range is used. `validate` warns with
+    * `UnrelatedSlotRange` when it isn't derived from the inherited one, as the spec requires.
     */
   // TODO COMPAT
   private[schemaview] def combineRange(
