@@ -9,7 +9,6 @@ import org.scalatest.wordspec.AnyWordSpec
   * compiler over it. JVM-only, as it needs the compiler and the file system.
   */
 class ScalaGeneratorCompileSpec extends AnyWordSpec, Matchers, ModelCatalogueSpec {
-  override val skipModels: Map[String, String] = ScalaGeneratorCompileSpec.skipModels
 
   /** Compile the given Scala sources with the Scala 3 compiler. The test classpath is reused, so
     * the generated code is checked against the real `runtime` module it depends on.
@@ -70,18 +69,4 @@ class ScalaGeneratorCompileSpec extends AnyWordSpec, Matchers, ModelCatalogueSpe
         )
       }
   }
-}
-
-object ScalaGeneratorCompileSpec {
-  private val slotUsageType =
-    "LNK-232: Scala: a `slot_usage` that changes the type of a field gives code that does not " +
-      "compile"
-
-  val skipModels: Map[String, String] = Map(
-    "requiredOverride" -> slotUsageType,
-    "importedOverride" -> slotUsageType,
-    "mixinFacets" -> slotUsageType,
-    "multivaluedOverride" -> slotUsageType,
-    "rangeOverride" -> slotUsageType,
-  )
 }

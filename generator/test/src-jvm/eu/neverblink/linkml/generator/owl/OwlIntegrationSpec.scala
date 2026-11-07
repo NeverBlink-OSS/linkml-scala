@@ -74,14 +74,7 @@ object OwlIntegrationSpec {
     "BUG: A slot with range Any takes literals as well as links, and an OWL property cannot take both"
 
   /** Models whose OWL is wrong, with the reason. */
-  val skipModels: Map[String, String] = {
-    val slotUsageUri =
-      "LNK-236: OWL: a `slot_uri` or range set by a `slot_usage` is lost"
-    Map(
-      "importedOverride" -> slotUsageUri,
-      "mixinFacets" -> slotUsageUri,
-    )
-  }
+  val skipModels: Map[String, String] = Map.empty
 
   private val oneTextValue =
     "OWL can only say that a `langstring` value has at most one plain string, not that it is one " +
@@ -149,14 +142,16 @@ object OwlIntegrationSpec {
     "memberCardinality" -> "twoStrings" -> "Not yet implemented: cardinality in `any_of` members",
     "requiredOverride" -> "missingTitle" -> openWorld,
     "requiredOverride" -> "missingName" -> openWorld,
+    "importedOverride" -> "missingCode" -> openWorld,
+    "importedOverride" -> "oldLabelUri" -> unknownProperty,
+    "mixinFacets" -> "missing" -> openWorld,
+    "mixinFacets" -> "oldUri" -> s"$openWorld, and $unknownProperty",
     "identifierAlias" -> "missingLabel" -> openWorld,
     "recursiveTree" -> "deepMissingLabel" -> openWorld,
     "mutualRecursion" -> "deepMissingName" -> openWorld,
     "rangeOverride" -> "basePart" ->
       s"OWL infers that the part is also a `CarPart` rather than rejecting it, and $openWorld",
     // Valid instances
-    "multivaluedOverride" -> "many" ->
-      "LNK-238: OWL: a `slot_usage` that makes a slot multivalued has no effect",
     "anything" -> "atomic" -> anyLiteral,
     "anything" -> "complex" -> anyLiteral,
   )
