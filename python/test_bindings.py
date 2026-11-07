@@ -716,6 +716,46 @@ class LintTest(unittest.TestCase):
             self.assertTrue(issues)
             self.assertFalse(any("message" in issue for issue in issues))
 
+    def test_issues_use_infer_messages_of_the_load(self):
+        rootless = schema(
+            "rootless",
+            """
+            classes:
+              Thing:
+                attributes:
+                  name:
+                    range: string
+            """,
+        )
+        with ohi_linkml.load_string(rootless, infer_messages=False) as loaded:
+            warnings = loaded.issues(ohi_linkml.WARNING)
+            self.assertTrue(warnings)
+            self.assertFalse(any("message" in warning for warning in warnings))
+
+    def test_issues_lint_the_schema_once(self):
+        rootless = schema(
+            "rootless",
+            """
+            classes:
+              Thing:
+                attributes:
+                  name:
+                    range: string
+            """,
+        )
+        with ohi_linkml.load_string(rootless) as loaded:
+            calls = []
+            lint = loaded.lint
+
+            def counted_lint(**options):
+                calls.append(options)
+                return lint(**options)
+
+            loaded.lint = counted_lint
+            self.assertTrue(loaded.issues(ohi_linkml.WARNING))
+            self.assertEqual([], loaded.issues(ohi_linkml.ERROR))
+            self.assertEqual(1, len(calls))
+
 
 class HandleTest(unittest.TestCase):
     def test_using_a_closed_schema_raises(self):
@@ -728,6 +768,12 @@ class HandleTest(unittest.TestCase):
         loaded = ohi_linkml.load_string(PERSON)
         loaded.close()
         loaded.close()
+
+    def test_repr_shows_the_handle_and_no_issue_count(self):
+        loaded = ohi_linkml.load_string(PERSON)
+        self.assertEqual(f"<ohi_linkml.Schema handle={loaded._handle}>", repr(loaded))
+        loaded.close()
+        self.assertEqual("<ohi_linkml.Schema closed>", repr(loaded))
 
     def test_an_unknown_handle_raises(self):
         with self.assertRaises(LinkMlError) as caught:
