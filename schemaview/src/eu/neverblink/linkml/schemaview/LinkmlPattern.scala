@@ -36,6 +36,38 @@ object LinkmlPattern {
       (if start then "" else ".*") + body + (if end then "" else ".*")
     }
 
+    /** The pattern for `java.util.regex`, with Python's named groups and their back references in
+      * Java's syntax. Use it with `Matcher.find()`, as a LinkML pattern matches anywhere.
+      */
+    def java: String = {
+      val sb = new StringBuilder(p.length)
+      var inClass = false
+      var i = 0
+      while i < p.length do {
+        p(i) match {
+          case '\\' if i + 1 < p.length =>
+            sb.append(p.substring(i, i + 2))
+            i += 1
+          case '[' if !inClass =>
+            inClass = true
+            sb.append('[')
+          case ']' if inClass =>
+            inClass = false
+            sb.append(']')
+          case '(' if !inClass && p.startsWith("(?P<", i) =>
+            sb.append("(?<")
+            i += 3
+          case '(' if !inClass && p.startsWith("(?P=", i) && p.indexOf(')', i) > 0 =>
+            val end = p.indexOf(')', i)
+            sb.append("\\k<").append(p.substring(i + 4, end)).append('>')
+            i = end
+          case c => sb.append(c)
+        }
+        i += 1
+      }
+      sb.toString
+    }
+
     def anchoredAtStart: Boolean = p.startsWith("^")
 
     def anchoredAtEnd: Boolean = endsWith(p, "$")

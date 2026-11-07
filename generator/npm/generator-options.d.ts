@@ -96,6 +96,39 @@ export interface ImportResult {
   warnings: string[];
 }
 
+/** Options of the Java generator. */
+export interface JavaGeneratorOptions {
+  /**
+   * The language of the titles and descriptions in the output, for schemas with text in more than one language.
+   * @defaultValue "en"
+   */
+  metadata_language?: string;
+  /**
+   * Whether the classes accept and keep properties beyond the ones in the schema.
+   * @defaultValue false
+   */
+  open?: boolean;
+  /** The package of the generated classes. If unset, the schema's name in lower case is used. */
+  package?: string;
+  /**
+   * The classes and enums in the output. Each class always comes with its ancestors, and a designated union with its members.
+   * @defaultValue "skip"
+   */
+  pruning_mode?: PruningMode;
+  /**
+   * Whether loading should check the data like the JSON Schema does: the JSON type of  every value, patterns, minimum and maximum values, lengths and cardinality.  Without it, values are coerced into their types, such as `"2"` to `2`, and only the required slots, enums, type designators and unknown keys are checked.
+   * @defaultValue false
+   */
+  strict?: boolean;
+  /**
+   * The kind of Java classes to generate.
+   * @defaultValue "jackson"
+   */
+  style?: JavaStyle;
+  /** The class to use as the tree root, instead of the class with `tree_root: true` in the schema. Only for the `tree_root` pruning mode. */
+  tree_root?: string;
+}
+
 /** Options of the JSON Schema generator. */
 export interface JsonSchemaGeneratorOptions {
   /**
@@ -347,7 +380,7 @@ export interface TranslationGeneratorOptions {
    */
   indentation_step?: number;
   /**
-   * The framework of the names in the dictionaries. One of `base`, `uri`, `scala`, `graphql`, `frictionless`, `ossie`, `erdiagram`, `json`, `typescript`, `pydantic` or `docs`.
+   * The framework of the names in the dictionaries. One of `base`, `uri`, `scala`, `graphql`, `frictionless`, `ossie`, `erdiagram`, `json`, `typescript`, `pydantic`, `java` or `docs`.
    * @defaultValue "base"
    */
   target?: string;
@@ -388,6 +421,10 @@ export interface TypeScriptGeneratorOptions {
   /** The class to use as the tree root, instead of the class with `tree_root: true` in the schema. Only for the `tree_root` pruning mode. */
   tree_root?: string;
 }
+
+/** The kind of Java classes to generate. */
+export type JavaStyle =
+  | "jackson";
 
 /** A serialization for output that can be YAML or JSON. */
 export type JsonOutputFormat =
@@ -438,6 +475,9 @@ export interface GeneratorFunctions {
 
   /** Generate a GraphQL schema: types, interfaces, scalars and enums, but no queries. */
   graphql(params?: GraphQlGeneratorOptions): string;
+
+  /** Generate Java classes for the schema's JSON data, one file per class and enum. The classes  only need the Jackson annotations. Load data with `mapper.readValue(text, X.class)` and dump it with `mapper.writeValueAsString(x)`. */
+  java(params?: JavaGeneratorOptions): Files;
 
   /** Generate a JSON Schema. */
   jsonSchema(params?: JsonSchemaGeneratorOptions): string;

@@ -1,0 +1,62 @@
+id: https://linkml.ohi.dev/model/converter/generator/java
+name: java-generator
+prefixes:
+  converter: https://linkml.ohi.dev/model/converter#
+default_prefix: converter
+imports:
+  - ../shared
+
+enums:
+  JavaStyle:
+    description: The kind of Java classes to generate.
+    permissible_values:
+      jackson:
+        description: >-
+          Classes with Jackson annotations, for Jackson 2.12 or later and Jackson 3. They import
+          only the `com.fasterxml.jackson.annotation` package, used by both Jackson versions.
+
+classes:
+  JavaGeneratorOptions:
+    description: Options of the Java generator.
+    mixins: [PruningOptions, MetadataLanguageOptions]
+    slots:
+      - open
+    slot_usage:
+      pruning_mode:
+        ifabsent: PruningMode(skip)
+        description: >-
+          The classes and enums in the output. Each class always comes with its ancestors, and a
+          designated union with its members.
+      open:
+        description: >-
+          Whether the classes accept and keep properties beyond the ones in the schema.
+    attributes:
+      style:
+        range: JavaStyle
+        required: true
+        ifabsent: JavaStyle(jackson)
+        description: The kind of Java classes to generate.
+      strict:
+        range: boolean
+        required: true
+        ifabsent: 'false'
+        description: >-
+          Whether loading should check the data like the JSON Schema does: the JSON type of 
+          every value, patterns, minimum and maximum values, lengths and cardinality. 
+          Without it, values are coerced into their types, such as `"2"` to `2`, and only
+          the required slots, enums, type designators and unknown keys are checked.
+      package:
+        examples:
+          - value: org.example.prov
+        range: string
+        description: >-
+          The package of the generated classes. If unset, the schema's name in lower case is used.
+
+functions:
+  java:
+    description: >-
+      Generate Java classes for the schema's JSON data, one file per class and enum. The classes 
+      only need the Jackson annotations. Load data with `mapper.readValue(text, X.class)` and dump
+      it with `mapper.writeValueAsString(x)`.
+    parameters: JavaGeneratorOptions
+    returns: Files

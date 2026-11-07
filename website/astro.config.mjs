@@ -15,7 +15,7 @@ const sidebar = [
       'generators',
       { label: 'Schemas', items: ['generators/json-schema', 'generators/graphql', 'generators/frictionless', 'generators/shacl'] },
       { label: 'Ontologies', items: ['generators/owl', 'generators/rdfs', 'generators/ossie'] },
-      { label: 'Code', items: ['generators/pydantic', 'generators/typescript', 'generators/scala'] },
+      { label: 'Code', items: ['generators/pydantic', 'generators/typescript', 'generators/java', 'generators/scala'] },
       { label: 'Docs', items: ['generators/docs', 'generators/er-diagram'] },
       { label: 'Schema tools', items: ['generators/linkml', 'generators/stats', 'generators/translation'] },
       'langstring',

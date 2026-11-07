@@ -1,0 +1,241 @@
+---
+title: Java
+description: Java classes for your data, from a LinkML schema.
+---
+
+import { Options, Usage } from '../../../components/converter';
+
+The Java generator turns a LinkML schema into Java classes for your data. The classes load and
+dump exactly the JSON that is described by the generated JSON Schema. The output is one `.java`
+file per class and enum, in one package:
+
+- It needs Java 11 or later, and Jackson 2.12 or later or Jackson 3. The classes import only
+  `com.fasterxml.jackson.annotation`, which is used by both versions of Jackson.
+- The classes don't need a LinkML runtime. If the classes need help with dicts, dates or the `--strict`
+  checks, a helper class is generated in the target package, `LinkMLJson`.
+- Loading JSON by default checks required slots, enums, type designators and dict keys, and rejects unknown keys.
+  With `--strict`, it also checks the JSON type of every
+  value, patterns, minimum and maximum values, lengths of strings, and cardinality. See
+  [Strict loading](#strict-loading).
+- Dumping returns the JSON you loaded, with the exceptions listed under
+  [Limitations](#limitations).
+
+## Usage
+
+<Usage name="java" />
+
+## Options
+
+<Options name="java" />
+
+## Loading and dumping data
+
+With Jackson 2:
+
+```java
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+ObjectMapper mapper = new ObjectMapper();
+Zoo zoo = mapper.readValue(text, Zoo.class);   // load
+String text2 = mapper.writeValueAsString(zoo); // dump
+```
+
+With Jackson 3, import `tools.jackson.databind.ObjectMapper` instead. The classes don't need
+any mapper settings or modules.
+
+Loading throws Jackson's exception for invalid data, with the location in the JSON included.
+You can also build objects in Java code and dump them:
+
+```java
+Keeper keeper = new Keeper();
+keeper.setId("k1");
+keeper.setSince(LocalDate.of(2020, 1, 2));
+Lion lion = new Lion();   // kind is "Lion" already
+lion.setName("Leo");
+```
+
+Setters don't check anything. Only loading does.
+
+## Strict loading
+
+Without `--strict`, Jackson converts a value to the type of its field where it can: `"2"` to `2`,
+`2.5` to `2` in an integer slot, `1` to `"1"` in a string slot. The schema's patterns, bounds,
+lengths and cardinality are not checked, and neither are the members of a union. That is enough if
+the data was validated with the [JSON Schema](/docs/generators/json-schema/) first, or comes from
+code you trust.
+
+With `--strict`, each class and rejects a value of the
+wrong JSON type, an explicit `null` for a required slot, and data that breaks a constraint of the
+schema, the same as the JSON Schema would. The classes are the same, only how they load differs.
+
+If the tree root is a list or a dict (`tree_root_as` is `list` or a dict), the package also has a
+document class for the whole JSON document, named after the tree root:
+`mapper.readValue(text, ZooDocument.class)`. Its value is in `getRoot()`.
+
+## Example
+
+This schema (the same one as in the [TypeScript guide](/docs/generators/typescript/#example)):
+
+```yaml
+classes:
+  Zoo:
+    tree_root: true
+    attributes:
+      name:
+        required: true
+      animals:
+        range: Animal
+        multivalued: true
+        inlined_as_list: true
+      keepers:
+        range: Keeper
+        multivalued: true
+        inlined: true
+  Animal:
+    abstract: true
+    attributes:
+      kind:
+        designates_type: true
+        required: true
+      name:
+        required: true
+      keeper:
+        range: Keeper
+  Lion:
+    is_a: Animal
+    attributes:
+      mane_length:
+        range: float
+  Parrot:
+    is_a: Animal
+    attributes:
+      words:
+        multivalued: true
+  Keeper:
+    description: A person who looks after animals.
+    attributes:
+      id:
+        identifier: true
+      name:
+      since:
+        range: date
+      shift:
+        range: Shift
+enums:
+  Shift:
+    permissible_values:
+      day:
+      night:
+```
+
+generates `Animal.java`, `Keeper.java`, `Lion.java`, `Parrot.java`, `Shift.java`, `Zoo.java` and
+`LinkMLJson.java`. Without the annotations, `equals`, `hashCode`, `toString` and the members for
+Jackson, the classes are:
+
+```java
+public abstract class Animal {
+    private String keeper;
+    private String kind;
+    private String name;
+
+    /** Reference to Keeper */
+    public String getKeeper() { ... }
+    public void setKeeper(String keeper) { ... }
+    // getKind, setKind, getName, setName
+}
+
+public class Lion extends Animal {
+    private Double maneLength;
+
+    public Lion() {
+        setKind("Lion");
+    }
+    // getManeLength, setManeLength
+}
+
+/** A person who looks after animals. */
+public class Keeper {
+    private String id;
+    private String name;
+    private Shift shift;
+    private LocalDate since;
+    // getters and setters
+}
+
+public class Zoo {
+    private List<Animal> animals;
+    private Map<String, Keeper> keepers;
+    private String name;
+    // getters and setters
+}
+
+public enum Shift {
+    DAY("day"),
+    NIGHT("night");
+    // getValue() and fromValue(Object)
+}
+```
+
+`Animal` has `@JsonTypeInfo` and `@JsonSubTypes` for its type designator, so loading
+`{"name": "Z", "animals": [{"kind": "Lion", "name": "Leo"}]}` gives a `Zoo` whose first animal is
+a `Lion`.
+
+## How the schema maps to Java
+
+### Classes
+
+Every LinkML class becomes a Java class, which extends its `is_a` parent.
+Mixins don't become Java interfaces, because of limitations in the Java type system and Jackson.
+Instead, fields coming from mixins are added directly to Java classes.
+
+A class is `abstract` in Java only if it is abstract in the schema and has a type designator, so
+that Jackson can pick a subclass for it.
+
+### Slot types
+
+| LinkML range                                               | Java                           |
+|------------------------------------------------------------|--------------------------------|
+| `string`, `uri`, `curie`, `uriorcurie`, `ncname` and types based on them | `String`         |
+| `integer`                                                  | `Long`                         |
+| `float`, `double`                                          | `Double`                       |
+| `decimal`                                                  | `BigDecimal`                   |
+| `boolean`                                                  | `Boolean`                      |
+| `date`                                                     | `LocalDate`                    |
+| `datetime`                                                 | `OffsetDateTime`, as JSON Schema's `date-time` needs an offset |
+| `time`                                                     | `OffsetTime`, as JSON Schema's `time` needs an offset |
+| `langstring`                                               | `Object`: a `String`, or a `Map<String, String>` from language tag to text |
+| `linkml:Any`                                               | `Object`, the JSON as Jackson reads it |
+| a type with `union_of`, or `any_of` members with ranges    | the members' type if they all have the same one, otherwise `Object`. With `--strict`, it holds the first member that the value fits; otherwise the JSON as Jackson reads it |
+| an enum                                                    | the enum                       |
+| a class, not inlined                                       | the type of the class's identifier, with a "Reference to X" doc comment |
+| a class, inlined                                           | the class                      |
+| a class, inlined as a list                                 | `List<X>`                      |
+| a class, inlined as a dict                                 | `Map<String, X>` (see below)   |
+
+A multivalued slot of any other range becomes a `List`. All fields are object types, and a slot
+without a value is `null`.
+
+### Null and missing values
+
+Loading accepts `null` for an optional slot, the same as the key not being present. Dumps skip
+every field without a value.
+
+### Extra properties
+
+With the `--open` option, objects accept keys that the schema doesn't have, and keep them in
+`getExtraProperties()`.
+
+## Limitations
+
+- A slot whose `any_of` members include a class is an `Object` with the JSON as Jackson reads it,
+  such as a `Map`, and its value is not checked.
+- Of the boolean expressions, only the ranges of `any_of` and `exactly_one_of` members are
+  checked, and only with `--strict`.
+- These are not supported: `equals_string`, `equals_number`, `structured_pattern`, `rules`, `unique_keys`, arrays,
+  `ifabsent` and `equals_expression`.
+- Dumping returns the same JSON, except that:
+  - dates and times can be written differently: `2020-01-01T00:00:00.000+00:00` is saved as
+    `2020-01-01T00:00:00Z`
+  - a simple dict entry written as an object is returned in the short form, if it can
+  - `5` in a float slot is saved as `5.0`
+  - a `null` dict entry is saved as `{}`

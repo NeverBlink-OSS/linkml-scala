@@ -21,7 +21,7 @@ classes:
         description: >-
           The framework of the names in the dictionaries. One of `base`, `uri`,
           `scala`, `graphql`, `frictionless`, `ossie`, `erdiagram`, `json`, `typescript`,
-          `pydantic` or `docs`.
+          `pydantic`, `java` or `docs`.
       derived_attributes:
         range: boolean
         required: true

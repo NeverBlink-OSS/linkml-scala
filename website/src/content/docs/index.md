@@ -16,6 +16,7 @@ To install the CLI, see the [install guide](https://ohi.dev/docs/getting-started
 - [OWL generator](/docs/generators/owl/) and [OWL importer](/docs/importers/owl/).
 - [Pydantic](/docs/generators/pydantic/): Python classes for your data.
 - [TypeScript](/docs/generators/typescript/): TypeScript types for your data.
+- [Java](/docs/generators/java/): Java classes for your data.
 - [Ossie generator](/docs/generators/ossie/) and [Ossie importer](/docs/importers/ossie/): how LinkML and Apache Ossie map to each other.
 
 ## Schemas

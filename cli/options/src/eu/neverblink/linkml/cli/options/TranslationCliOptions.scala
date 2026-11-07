@@ -15,7 +15,7 @@ final case class TranslationCliOptions(
     @HelpMessage("The number of spaces for each level of indentation in the output. Default: 2")
     indentationStep: Int = 2,
     @HelpMessage(
-      "The framework of the names in the dictionaries. One of `base`, `uri`, `scala`, `graphql`, `frictionless`, `ossie`, `erdiagram`, `json`, `typescript`, `pydantic` or `docs`. Default: base",
+      "The framework of the names in the dictionaries. One of `base`, `uri`, `scala`, `graphql`, `frictionless`, `ossie`, `erdiagram`, `json`, `typescript`, `pydantic`, `java` or `docs`. Default: base",
     )
     target: String = "base",
 ) {

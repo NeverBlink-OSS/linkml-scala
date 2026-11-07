@@ -16,6 +16,7 @@ import eu.neverblink.linkml.generator.graphql.GraphQlRenamer
 import eu.neverblink.linkml.generator.jsonschema.JsonRenamer
 import eu.neverblink.linkml.generator.ossie.OssieRenamer
 import eu.neverblink.linkml.generator.pydantic.PydanticRenamer
+import eu.neverblink.linkml.generator.javagen.JavaRenamer
 import eu.neverblink.linkml.generator.scala.ScalaRenamer
 import eu.neverblink.linkml.generator.translation.TranslationGenerator.Translation
 import eu.neverblink.linkml.generator.typescript.TypeScriptRenamer
@@ -77,6 +78,7 @@ object TranslationGenerator {
     "json" -> JsonRenamer,
     "typescript" -> TypeScriptRenamer,
     "pydantic" -> PydanticRenamer,
+    "java" -> JavaRenamer,
     "docs" -> DocsRenamer,
   )
 

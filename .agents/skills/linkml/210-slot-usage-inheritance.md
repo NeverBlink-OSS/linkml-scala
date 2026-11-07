@@ -42,7 +42,7 @@ slots:
 | `name` | Optional | Required |
 | `tags` | Single-valued | Multivalued |
 
-So `{}` is a valid `Child` for `linkml-validate`, but not for the JSON Schema, SHACL, Pydantic or TypeScript that ohi LinkML generates.
+So `{}` is a valid `Child` for `linkml-validate`, but not for the JSON Schema, SHACL, Pydantic, Java or TypeScript that ohi LinkML generates.
 To make a slot optional or single-valued in some classes, leave it optional or single-valued in the slot definition, and turn it on in the classes that need it.
 
 ## Boolean expressions
@@ -106,4 +106,4 @@ all_of:
 
 The SHACL generator emits all of it.
 The OWL generator gives each class its own `any_of` ranges; OWL subclassing requires the ranges of the parent classes too.
-The JSON Schema and Pydantic generators do not support boolean expressions yet.
+The JSON Schema, Pydantic and Java generators do not support boolean expressions yet.

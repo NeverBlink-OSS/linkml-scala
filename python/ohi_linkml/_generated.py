@@ -19,6 +19,7 @@ DOCUMENT_FUNCTIONS = (
     "linkml_er_diagram",
     "linkml_frictionless",
     "linkml_graphql",
+    "linkml_java",
     "linkml_json_schema",
     "linkml_linkml",
     "linkml_ossie",
@@ -143,6 +144,48 @@ class Generators:
             "linkml_graphql",
             metadata_language=metadata_language,
             pruning_mode=pruning_mode,
+            tree_root=tree_root,
+        )
+
+    def java(
+        self,
+        *,
+        metadata_language: str = "en",
+        open: bool = False,
+        package: str | None = None,
+        pruning_mode: Literal["tree_root", "schema", "skip"] = "skip",
+        strict: bool = False,
+        style: Literal["jackson"] = "jackson",
+        tree_root: str | None = None,
+    ) -> dict[str, str]:
+        """Generate Java classes for the schema's JSON data, one file per class and enum. The
+        classes only need the Jackson annotations. Load data with `mapper.readValue(text,
+        X.class)` and dump it with `mapper.writeValueAsString(x)`.
+
+        :param metadata_language: The language of the titles and descriptions in the output, for
+            schemas with text in more than one language.
+        :param open: Whether the classes accept and keep properties beyond the ones in the
+            schema.
+        :param package: The package of the generated classes. If unset, the schema's name in
+            lower case is used.
+        :param pruning_mode: The classes and enums in the output. Each class always comes with
+            its ancestors, and a designated union with its members.
+        :param strict: Whether loading should check the data like the JSON Schema does: the JSON
+            type of every value, patterns, minimum and maximum values, lengths and cardinality.
+            Without it, values are coerced into their types, such as `"2"` to `2`, and only the
+            required slots, enums, type designators and unknown keys are checked.
+        :param style: The kind of Java classes to generate.
+        :param tree_root: The class to use as the tree root, instead of the class with
+            `tree_root: true` in the schema. Only for the `tree_root` pruning mode.
+        """
+        return self._json(
+            "linkml_java",
+            metadata_language=metadata_language,
+            open=open,
+            package=package,
+            pruning_mode=pruning_mode,
+            strict=strict,
+            style=style,
             tree_root=tree_root,
         )
 
@@ -406,7 +449,7 @@ class Generators:
             output.
         :param target: The framework of the names in the dictionaries. One of `base`, `uri`,
             `scala`, `graphql`, `frictionless`, `ossie`, `erdiagram`, `json`, `typescript`,
-            `pydantic` or `docs`.
+            `pydantic`, `java` or `docs`.
         """
         return self._document(
             "linkml_translation",

@@ -59,6 +59,15 @@ import { LinkML } from "@neverblink/linkml";
   if (!output) throw new Error("graphql gave nothing");
 }
 
+// java
+{
+  const yaml = readFileSync("prov-o.linkml.yaml", "utf8");
+  const { view, report } = LinkML.loadFromString(yaml, {});
+  if (!view) throw new Error(JSON.stringify(report));
+  const files = view.java({ package: "org.example.prov" });
+  if (!files) throw new Error("java gave nothing");
+}
+
 // json_schema
 {
   const yaml = readFileSync("prov-o.linkml.yaml", "utf8");

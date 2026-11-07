@@ -23,10 +23,11 @@ with ohi_linkml.load_file("model.yaml") as schema:
 `load_file()` will automatically resolve imports and parse the schema. You can reuse the `Schema` object for multiple generator calls, and it will automatically cache the parsed form of any imported schemas.
 
 Generators available on a `Schema`: `json_schema()`, `shacl()`, `rdfs()`, `linkml()`,
-`frictionless()`, `graphql()`, `typescript()`, `pydantic()`, `er_diagram()`, `docs()`, `translation()`,
+`frictionless()`, `graphql()`, `typescript()`, `pydantic()`, `java()`, `er_diagram()`, `docs()`, `translation()`,
 `ossie()`, `owl()`, `scala()` and `stats()`, plus `lint()` for validation. For how to use the classes
-`pydantic()` generates, see
-[the Pydantic guide](https://linkml.ohi.dev/docs/generators/pydantic/).
+`pydantic()` and `java()` generate, see
+[the Pydantic guide](https://linkml.ohi.dev/docs/generators/pydantic/) and
+[the Java guide](https://linkml.ohi.dev/docs/generators/java/).
 
 Going the other way, `ohi_linkml.from_ossie()` reads an Apache Ossie (incubating) ontology, and `ohi_linkml.from_owl()` an OWL ontology in Turtle or N-Triples. Each returns a dict with the corresponding LinkML schema, and warnings about what it could not import.
 

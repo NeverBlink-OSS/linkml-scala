@@ -4,6 +4,7 @@ import eu.neverblink.linkml.generator.options.{DocsGeneratorOptions, PydanticGen
 import eu.neverblink.linkml.generator.CharDocumentGenerator
 import eu.neverblink.linkml.generator.graphql.GraphQlRenamer
 import eu.neverblink.linkml.generator.pydantic.{PydanticGenerator, PydanticRenamer}
+import eu.neverblink.linkml.generator.javagen.{JavaGenerator, JavaRenamer}
 import eu.neverblink.linkml.generator.scala.{ScalaGenerator, ScalaRenamer}
 import eu.neverblink.linkml.generator.typescript.TypeScriptRenamer
 import eu.neverblink.linkml.generator.util.{GeneratedHeader, Renamer}
@@ -724,6 +725,7 @@ class DocsGenerator(using sv: SchemaView) extends CharDocumentGenerator[DocsGene
           // Python fields are named after the slot's name in data, made a valid identifier.
           if (t.renamer eq PydanticRenamer)
             (t.language, PydanticRenamer.attribute(s.aliasedName, isPythonName))
+          else if (t.renamer eq JavaRenamer) (t.language, JavaRenamer.field(s.aliasedName))
           else (t.language, t.renamer.slotName(s))
         }
       case fv: FunctionView => codeTargets.map(t => (t.language, t.renamer.functionName(fv)))
@@ -969,6 +971,7 @@ object DocsGenerator {
     CodeTarget("Scala", ScalaRenamer, ScalaGenerator.definesEnum),
     CodeTarget("TypeScript", TypeScriptRenamer, _ => true),
     CodeTarget("Python", PydanticRenamer, PydanticGenerator.definesEnum),
+    CodeTarget("Java", JavaRenamer, JavaGenerator.definesEnum),
     CodeTarget("GraphQL", GraphQlRenamer, _ => true),
   )
 

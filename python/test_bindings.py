@@ -614,6 +614,12 @@ class GeneratorTest(unittest.TestCase):
         self.assertIn("Person.scala", files)
         self.assertIn("package com.example.model", files["Person.scala"])
 
+    def test_java(self):
+        files = self.schema.java(package="com.example.model")
+        self.assertIn("public class Person {", files["Person.java"])
+        self.assertIn("package com.example.model;", files["Person.java"])
+        self.assertIn("LinkMLJson.string(name)", self.schema.java(strict=True)["Person.java"])
+
     def test_an_unexported_function_cannot_be_called(self):
         # Each generator is its own exported symbol now, so a name that does not exist fails at the
         # ctypes layer rather than being dispatched and rejected by the library.

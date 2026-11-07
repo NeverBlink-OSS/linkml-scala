@@ -34,6 +34,7 @@ class GenerateSpec extends AnyWordSpec, Matchers {
     (GraphQl, "graphql", Seq("type Root", "name: String")),
     (TypeScript, "typescript", Seq("export interface Root {", "name?: string;")),
     (Pydantic, "pydantic", Seq("class Root(LinkMLModel):", "name: str | None = None")),
+    (Java, "java", Seq("public class Root {", "private String name;")),
     (ErDiagram, "er-diagram", Seq("erDiagram", "Root {", "string? name")),
     (Docs, "docs", Seq("Class: Root", "| name | [string](")),
     (Translation, "translation", Seq("\"Root\": \"root\"")),

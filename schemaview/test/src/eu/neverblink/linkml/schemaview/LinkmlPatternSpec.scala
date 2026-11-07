@@ -39,6 +39,14 @@ class LinkmlPatternSpec extends AnyWordSpec, Matchers {
         LinkmlPattern.fromXsd(LinkmlPattern(p).xsd).linkml shouldBe p
     }
 
+    "write Python's named groups and their back references in Java's syntax" in {
+      LinkmlPattern("^(?P<word>\\w+) (?P=word)$").java shouldBe "^(?<word>\\w+) \\k<word>$"
+      LinkmlPattern("^[0-9]+(?:\\.[0-9]+)?$").java shouldBe "^[0-9]+(?:\\.[0-9]+)?$"
+      // Not a group when escaped or in a character class
+      LinkmlPattern("\\(?P<x>").java shouldBe "\\(?P<x>"
+      LinkmlPattern("[(?P<]").java shouldBe "[(?P<]"
+    }
+
     "tell whether it is anchored" in {
       LinkmlPattern("^a$").anchoredAtStart shouldBe true
       LinkmlPattern("^a$").anchoredAtEnd shouldBe true

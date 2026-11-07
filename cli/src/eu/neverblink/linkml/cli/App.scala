@@ -37,6 +37,7 @@ class App protected[cli] (
     GraphQl,
     TypeScript,
     Pydantic,
+    Java,
     ErDiagram,
     Docs,
     Translation,

@@ -6,6 +6,7 @@ import eu.neverblink.linkml.cli.options.EnumParsers.given
 import eu.neverblink.linkml.generator.docs.{DocsGenerator, DocsSite}
 import eu.neverblink.linkml.generator.erdiagram.ErDiagramGenerator
 import eu.neverblink.linkml.generator.graphql.GraphQlGenerator
+import eu.neverblink.linkml.generator.javagen.JavaGenerator
 import eu.neverblink.linkml.generator.jsonschema.JsonSchemaGenerator
 import eu.neverblink.linkml.generator.linkml.LinkMlGenerator
 import eu.neverblink.linkml.generator.ossie.OssieGenerator
@@ -287,6 +288,43 @@ object Pydantic extends StreamGenerate[PydanticOptions] {
       out,
       options.generator.toOptions,
     )
+}
+
+// Java
+
+@HelpMessage(
+  "Generate Java classes, one file per class and enum\n" +
+    "The classes load and dump the same JSON as the generated JSON Schema describes. With the " +
+    "default style, load data with mapper.readValue(text, X.class) and dump it with " +
+    "mapper.writeValueAsString(x), with Jackson 2 or 3.",
+)
+@ArgsName("<input-file>")
+final case class JavaOptions(
+    @Recurse
+    common: GenerateOptions,
+    @Recurse
+    generator: JavaCliOptions = JavaCliOptions(),
+    @HelpMessage(
+      "Before writing, delete the .java files in the --to directory that start with the " +
+        "generated code header, so that classes no longer in the model do not linger. " +
+        "Other files are kept. Default: false",
+    )
+    clean: Boolean = false,
+) extends HasGenerateOptions
+
+object Java extends ManyFilesGenerate[JavaOptions] {
+  override protected def generatorName: String = "java"
+
+  override protected[cli] def staleFile(options: JavaOptions): Option[os.Path => Boolean] =
+    Option.when(options.clean) { file =>
+      file.ext == "java" &&
+      os.read.lines.stream(file).headOption.exists(GeneratedHeader.startsHeader(_, "//"))
+    }
+
+  override protected[cli] def generate(
+      options: JavaOptions,
+  )(using SchemaView): Iterable[(String, String)] =
+    JavaGenerator().generate(options.generator.toOptions)
 }
 
 // Apache Ossie ontology

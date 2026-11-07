@@ -76,6 +76,13 @@ class DocSnippetsTest(unittest.TestCase):
             output = schema.graphql(pruning_mode="schema")
         self.assertTrue(output)
 
+    def test_java(self) -> None:
+        import ohi_linkml
+
+        with ohi_linkml.load_file("prov-o.linkml.yaml") as schema:
+            files = schema.java(package="org.example.prov")
+        self.assertTrue(files)
+
     def test_json_schema(self) -> None:
         import ohi_linkml
 

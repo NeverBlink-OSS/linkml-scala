@@ -170,6 +170,8 @@ object Snippets {
   ): Snippet = {
     val c = function.options
     val pkg = c.scalaName.stripSuffix("GeneratorOptions").stripSuffix("ImporterOptions").toLowerCase
+    // A package named `java` would hide the JDK's `java` package from the code around it
+    val scalaPackage = if pkg == "java" then "javagen" else pkg
     val className = c.scalaName.stripSuffix("Options")
     val args = examples.map((f, value) => s"${f.scalaName} = ${scalaValue(f, value, schema)}")
     val enums = examples.collect { case (f, _) if f.isEnum => f.valueType }
@@ -182,7 +184,7 @@ object Snippets {
         then prefix + optionImports.head
         else prefix + "*"
       },
-      Some(s"import eu.neverblink.linkml.generator.$pkg.$className"),
+      Some(s"import eu.neverblink.linkml.generator.$scalaPackage.$className"),
       Option.when(!function.isImporter)(
         "import eu.neverblink.linkml.schemaview.{SchemaIssues, SchemaView}",
       ),
@@ -200,7 +202,8 @@ object Snippets {
     } else {
       val method = function.returns match {
         case Returns.Document => "serialize"
-        case Returns.Map(_) if function.name != "scala" => "generateFiles"
+        case Returns.Map(_) if function.name != "scala" && function.name != "java" =>
+          "generateFiles"
         case _ => "generate"
       }
       val result = resultName(function)

@@ -225,6 +225,11 @@ class TranslationGeneratorSpec extends AnyWordSpec, Matchers, ModelCatalogueSpec
         "list_items" -> "list_items",
       )
     }
+    "target is java" in {
+      gen.generate(TranslationGeneratorOptions(target = "java")).functions should contain(
+        "list_items" -> "listItems",
+      )
+    }
     "target is scala" in {
       gen.generate(TranslationGeneratorOptions(target = "scala")).functions should contain(
         "list_items" -> "listItems",

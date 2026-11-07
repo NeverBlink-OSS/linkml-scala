@@ -22,7 +22,7 @@ import {
 import { yaml } from "@codemirror/lang-yaml";
 import { json } from "@codemirror/lang-json";
 import { turtle } from "@codemirror/legacy-modes/mode/turtle";
-import { scala } from "@codemirror/legacy-modes/mode/clike";
+import { java, scala } from "@codemirror/legacy-modes/mode/clike";
 import { typescript } from "@codemirror/legacy-modes/mode/javascript";
 import { python } from "@codemirror/legacy-modes/mode/python";
 import { tags as t } from "@lezer/highlight";
@@ -32,6 +32,7 @@ export type OutputLang =
   | "yaml"
   | "turtle"
   | "scala"
+  | "java"
   | "graphql"
   | "typescript"
   | "python"
@@ -97,6 +98,7 @@ const LANGS: Record<OutputLang, unknown[]> = {
   yaml: [yaml()],
   turtle: [StreamLanguage.define(turtle)],
   scala: [StreamLanguage.define(scala)],
+  java: [StreamLanguage.define(java)],
   graphql: [StreamLanguage.define(graphql)],
   typescript: [StreamLanguage.define(typescript)],
   python: [StreamLanguage.define(python)],
