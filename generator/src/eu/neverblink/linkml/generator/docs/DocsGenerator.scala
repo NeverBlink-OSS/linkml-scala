@@ -1037,6 +1037,14 @@ object DocsGenerator {
 
   /** Whether [[uri]] is a web address that can be the target of a Markdown link as it is. */
   private def isLinkable(uri: String): Boolean =
-    (uri.startsWith("https://") || uri.startsWith("http://")) &&
-      !uri.exists(c => c <= ' ' || c == '(' || c == ')' || c == '<' || c == '>')
+    (uri.startsWith("https://") || uri.startsWith("http://")) && {
+      var i = 0
+      while (
+        i < uri.length && {
+          val c = uri.charAt(i)
+          c > ' ' && c != '(' && c != ')' && c != '<' && c != '>'
+        }
+      ) i += 1
+      i == uri.length
+    }
 }
