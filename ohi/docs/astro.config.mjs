@@ -38,6 +38,7 @@ export default defineConfig({
       favicon: '/favicon.svg',
       customCss: ['./src/styles/theme.css'],
       components: {
+        EditLink: './src/components/EditLink.astro',
         ThemeSelect: './src/components/ThemeSelect.astro',
       },
       social: [

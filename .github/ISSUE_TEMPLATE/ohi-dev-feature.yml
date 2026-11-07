@@ -1,0 +1,20 @@
+name: Feature request for ohi.dev
+description: Suggest something new for ohi.dev, the SDKs, ohi CLI, or its docs.
+labels: [enhancement, ohi.dev]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What would you like?
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: How would it help you?
+  - type: input
+    id: page
+    attributes:
+      label: Page
+      description: Address of the page it is about, if any.
+      placeholder: https://ohi.dev/o/w3c/sosa@2017
