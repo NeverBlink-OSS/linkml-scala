@@ -22,7 +22,6 @@ import eu.neverblink.linkml.schemaview.{
   ImportMapImporter,
   Importer,
   SchemaIssues,
-  SchemaValidator,
   SchemaView,
   StringImporter,
 }
@@ -146,7 +145,8 @@ type SchemaValidationReport = js.Any
 type BuildInfo = js.Any
 
 /** What loading a schema produced: always a validation report, and a usable handle if the schema
-  * could be loaded at all.
+  * could be loaded at all. Loading checks only for fatal problems, so a loaded schema has an empty
+  * report. Use `lint` to find its errors and warnings.
   */
 @JSExportAll
 final class LoadResult private[js] (
@@ -193,7 +193,8 @@ object LinkMlJsApi {
     * @param imports
     *   JS dictionary (object) containing a mapping from filename to LinkML models (in YAML format)
     * @param inferMessages
-    *   Whether to fill in each issue's human-readable `message` and `details`.
+    *   Whether to fill in the human-readable `message` and `details` of the fatal problems in the
+    *   report. Pass it to [[lint]] for errors and warnings.
     * @param importMap
     *   Optional JS dictionary from an import to the location to load it from, which is a key of the
     *   [[imports]], such as `{"https://example.org/units/": "deps/units/"}`. Keys are full URIs or
@@ -234,7 +235,8 @@ object LinkMlJsApi {
     *   JS dictionary (object) containing a mapping from path to LinkML models (in YAML format),
     *   including the main schema itself under [[path]].
     * @param inferMessages
-    *   Whether to fill in each issue's human-readable `message` and `details`.
+    *   Whether to fill in the human-readable `message` and `details` of the fatal problems in the
+    *   report. Pass it to [[lint]] for errors and warnings.
     * @param importMap
     *   Optional JS dictionary from an import to the location to load it from, which is a key of the
     *   [[imports]], such as `{"https://example.org/units/": "deps/units/"}`. Keys are full URIs or
@@ -274,8 +276,8 @@ object LinkMlJsApi {
       case Left(issue) => new Left(Seq(issue))
     }
 
-  /** Turn a load outcome into a [[LoadResult]]. A schema that loaded is linted straight away, so
-    * that the report covers errors and warnings too - not just the fatals that blocked loading.
+  /** Turn a load outcome into a [[LoadResult]]. A loaded schema gets an empty report. [[lint]]
+    * finds its errors and warnings.
     */
   private def loadResult(
       loaded: Either[Seq[SchemaFatal], SchemaView],
@@ -284,8 +286,7 @@ object LinkMlJsApi {
   ): LoadResult =
     loaded match {
       case Right(sv) =>
-        val issues = SchemaValidator(using sv).lintProblems
-        new LoadResult(new SchemaViewJs(sv), reportJson(issues, runId, inferMessages))
+        new LoadResult(new SchemaViewJs(sv), reportJson(Nil, runId, inferMessages))
       case Left(problems) =>
         new LoadResult(js.undefined, reportJson(problems, runId, inferMessages))
     }
@@ -350,5 +351,5 @@ object LinkMlJsApi {
     *   A `SchemaValidationReport` as a plain JS object. `issues` is empty if the schema is clean.
     */
   def lint(schema: SchemaViewJs, inferMessages: Boolean = true): SchemaValidationReport =
-    reportJson(SchemaValidator(using schema.underlying).lintProblems, None, inferMessages)
+    reportJson(schema.underlying.lintProblems, None, inferMessages)
 }

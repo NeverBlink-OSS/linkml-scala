@@ -104,35 +104,41 @@ class Schema(Generators):
     releases it, but only whenever the garbage collector gets round to it.
     """
 
-    def __init__(self, runtime_: Runtime, handle: int, report: Report) -> None:
+    def __init__(
+        self, runtime_: Runtime, handle: int, report: Report, infer_messages: bool = True
+    ) -> None:
         self._runtime = runtime_
         self._handle: int | None = handle
         self._report = report
+        self._infer_messages = infer_messages
+        self._lint_report: Report | None = None
 
     @property
     def report(self) -> Report:
-        """What linting the schema found while loading it.
+        """The report from loading the schema.
 
-        Loading only fails on fatal problems, so a schema can load and still have errors and
-        warnings against it. This is exactly what :meth:`lint` returns for the same schema.
+        Loading fails on fatal problems and checks for nothing else, so this report has no issues.
+        Use :meth:`lint` or :meth:`issues` to find errors and warnings.
         """
         return self._report
 
     def issues(self, severity: str | None = None) -> list[dict[str, Any]]:
-        """The issues from :attr:`report`, optionally only those of one severity.
+        """The issues that :meth:`lint` finds, optionally only those of one severity.
 
-        :param severity: :data:`FATAL`, :data:`ERROR` or :data:`WARNING`; all of them if omitted.
+        The first call lints the schema with the ``infer_messages`` given to the load function, and
+        later calls reuse that report.
+
+        :param severity: :data:`ERROR` or :data:`WARNING`; all of them if omitted.
         """
-        issues = self._report.get("issues", [])
+        if self._lint_report is None:
+            self._lint_report = self.lint(infer_messages=self._infer_messages)
+        issues = self._lint_report.get("issues", [])
         if severity is None:
-            return issues
+            return list(issues)
         return [issue for issue in issues if issue.get("severity") == severity]
 
     def lint(self, *, infer_messages: bool = True) -> Report:
-        """Lint the schema again, and return the report.
-
-        The same thing :attr:`report` already holds, so this is only worth calling to get a report
-        with different settings.
+        """Lint the schema for errors and warnings, and return the report.
 
         :param infer_messages: fill in each issue's human-readable ``message`` and ``details``. Turn
             it off for only the structured fields, which is a little faster.
@@ -162,7 +168,7 @@ class Schema(Generators):
 
     def __repr__(self) -> str:
         state = "closed" if self._handle is None else f"handle={self._handle}"
-        return f"<ohi_linkml.Schema {state}, {len(self._report.get('issues', []))} issue(s)>"
+        return f"<ohi_linkml.Schema {state}>"
 
     def _document(self, function: str, **options: Any) -> str:
         """Call a generator that returns a document, by its exported name."""
@@ -214,7 +220,8 @@ def load_file(
     importing schema's directory, and ``linkml:`` ones against the metamodel built into the library.
 
     :param path: path to the schema file.
-    :param infer_messages: fill in each issue's human-readable ``message`` and ``details``.
+    :param infer_messages: fill in the human-readable ``message`` and ``details`` of the fatal
+        problems in ``SchemaLoadError.report``. Pass it to ``Schema.lint`` for errors and warnings.
     :param import_map: import to the location to load it from, as a mapping such as
         ``{"https://example.org/units/": "deps/units/"}``, or the path of a JSON file with such an
         object. Keys are full URIs or paths, not CURIEs. A key that ends with ``/`` or ``#``
@@ -227,6 +234,7 @@ def load_file(
     return _schema(
         current,
         *current.load_file(str(path), _load_options(infer_messages, import_map)),
+        infer_messages=infer_messages,
     )
 
 
@@ -247,7 +255,8 @@ def load_string(
 
     :param schema: the schema, as YAML.
     :param imports: filename to YAML text, covering everything the schema imports.
-    :param infer_messages: fill in each issue's human-readable ``message`` and ``details``.
+    :param infer_messages: fill in the human-readable ``message`` and ``details`` of the fatal
+        problems in ``SchemaLoadError.report``. Pass it to ``Schema.lint`` for errors and warnings.
     :param import_map: import to the location to load it from, as a mapping such as
         ``{"https://example.org/units/": "deps/units/"}``, or the path of a JSON file with such an
         object. Keys are full URIs or paths, not CURIEs. A key that ends with ``/`` or ``#``
@@ -262,6 +271,7 @@ def load_string(
         *current.load_string(
             None, schema, imports, _load_options(infer_messages, import_map)
         ),
+        infer_messages=infer_messages,
     )
 
 
@@ -284,7 +294,8 @@ def load_path(
 
     :param path: the root schema's key in ``imports``.
     :param imports: path to YAML text, including the root schema itself.
-    :param infer_messages: fill in each issue's human-readable ``message`` and ``details``.
+    :param infer_messages: fill in the human-readable ``message`` and ``details`` of the fatal
+        problems in ``SchemaLoadError.report``. Pass it to ``Schema.lint`` for errors and warnings.
     :param import_map: import to the location to load it from, as a mapping such as
         ``{"https://example.org/units/": "deps/units/"}``, or the path of a JSON file with such an
         object. Keys are full URIs or paths, not CURIEs. A key that ends with ``/`` or ``#``
@@ -300,6 +311,7 @@ def load_path(
         *current.load_string(
             path, None, imports, _load_options(infer_messages, import_map)
         ),
+        infer_messages=infer_messages,
     )
 
 
@@ -314,7 +326,9 @@ def build_info() -> BuildInfo:
     return runtime().build_info()
 
 
-def _schema(current: Runtime, handle: int, report: Report) -> Schema:
+def _schema(
+    current: Runtime, handle: int, report: Report, *, infer_messages: bool = True
+) -> Schema:
     """Wrap a load result, turning a refused load into an exception.
 
     The library returns handle 0 when fatal problems stopped the schema loading, and a report either
@@ -322,4 +336,4 @@ def _schema(current: Runtime, handle: int, report: Report) -> Schema:
     """
     if handle == 0:
         raise SchemaLoadError(report)
-    return Schema(current, handle, report)
+    return Schema(current, handle, report, infer_messages)
