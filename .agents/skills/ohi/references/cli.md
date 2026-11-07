@@ -52,6 +52,11 @@ from the lock's direct selections, retaining their versions and formats. New set
 `default_format: linkml-yaml` and `download_dir: .ohi`. Existing YAML is preserved. If neither record
 exists, use `ohi init` or `ohi add`. Downloads require lock version 2.
 
+`--locked` fails with `LOCK_OUTDATED` instead of updating a missing or outdated lock. `--frozen`
+installs the lock as it is, without comparing it to the declaration, and fails with `LOCK_OUTDATED`
+when the lock is missing. The two can't be combined. `ohi lock --check` fails with `LOCK_OUTDATED`
+in the same cases as `sync --locked`, without making catalog requests or writes.
+
 ## Dependencies
 
 Publication `dependencies` contain publication URLs in `base_url`. The list is complete and flat. Inspect those publications, select advertised artifacts and download required files explicitly with `get`, or [sync the complete lock](#synchronize-downloads) when one exists. ohi does not derive download URLs from namespace prefixes or configure an application's loader.

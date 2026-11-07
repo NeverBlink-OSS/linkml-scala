@@ -75,7 +75,8 @@ private[cli] object ProjectOutput {
           if result.declarationCreated then
             creationNotice(directory, downloadDirectory, colored) + "\n\nNext: ohi add --help"
           else styled(declaration, "36", colored) + " already exists. No changes made."
-        case generated.projectresult.ProjectOperation.Lock => "Updated ohi.lock.json."
+        case generated.projectresult.ProjectOperation.Lock =>
+          if result.lockChanged then "Updated ohi.lock.json." else "ohi.lock.json is up to date."
         case _ =>
           val location = downloadDirectory.filter(_ =>
             !result.declarationCreated && directory != Path.of("").toAbsolutePath.normalize(),
@@ -148,6 +149,8 @@ private[cli] object ProjectOutput {
         )
       }).getOrElse {
         val summary = error.operation match {
+          case _ if error.code == ProjectErrorCode.LockOutdated =>
+            "ohi.lock.json is missing or out of date."
           case ProjectOperation.Init if error.code == ProjectErrorCode.InvalidDeclaration =>
             "Cannot initialize the project because ohi.yaml is invalid."
           case ProjectOperation.Init => "Could not initialize the project."
@@ -163,6 +166,7 @@ private[cli] object ProjectOutput {
           (if error.operation == ProjectOperation.Init && error.code == ProjectErrorCode.InvalidDeclaration
            then
              "Correct ohi.yaml using format_version: 1, default_format, download_dir and dependencies, then run:"
+           else if error.code == ProjectErrorCode.LockOutdated then "Update the lock with:"
            else "Correct the reported cause and retry.")
       }
       val effects =
@@ -170,7 +174,7 @@ private[cli] object ProjectOutput {
         then ""
         else if !error.declarationChanged && !error.lockChanged &&
           (error.operation != ProjectOperation.Lock || error.code == ProjectErrorCode.InvalidDeclaration ||
-            error.code == ProjectErrorCode.InvalidProject)
+            error.code == ProjectErrorCode.InvalidProject || error.code == ProjectErrorCode.LockOutdated)
         then "No project files were written."
         else {
           def record(changed: Boolean, path: String, unchanged: String): String =

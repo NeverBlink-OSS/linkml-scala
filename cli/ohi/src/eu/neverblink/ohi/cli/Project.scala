@@ -131,50 +131,49 @@ private[cli] final class Project(
   }
 
   /** Resolves the recorded formats strictly and replaces the lock without editing the declaration
-    * or downloading files. Invalid existing records fail before catalog requests.
+    * or downloading files. Invalid existing records fail before catalog requests. `check` only
+    * checks that the lock matches the declaration, like `sync --locked`.
     */
-  def refresh(inspect: String => Publication): projectresult.ProjectResult = {
+  def refresh(
+      inspect: String => Publication,
+      check: Boolean = false,
+  ): projectresult.ProjectResult = {
     val declaration = read(allowMissing = false)
-    val complete = build(declaration, new ProjectLock.Inspection(inspect))
-    writeLock(lockPath, complete)
-    lockChanged = true
+    if check then {
+      val existing = readRecords()._2
+      existing.foreach(requireVersion2)
+      if !existing.exists(matches(declaration, _)) then throw outdated(existing.isEmpty)
+    } else {
+      val complete = build(declaration, new ProjectLock.Inspection(inspect))
+      writeLock(lockPath, complete)
+      lockChanged = true
+    }
     result()
   }
 
   /** Installs a valid revision-2 lock, resolving only missing or changed direct requirements.
     * Preserves existing declaration and reused lock bytes. `init` creates a missing declaration
-    * from direct selections after preflight. Reports completed writes and files through
-    * [[failure]].
+    * from direct selections after preflight. `mode` can forbid lock updates. Reports completed
+    * writes and files through [[failure]].
     */
   def sync(
       inspect: String => Publication,
       fetch: String => Array[Byte],
       init: Boolean = false,
+      mode: Project.LockMode = Project.LockMode.Update,
   ): projectresult.ProjectResult = {
     val (declaration, existing) = readRecords()
-    existing.foreach { complete =>
-      if complete.formatVersion != 2 then
-        throw new LockException(
-          LockError(
-            code = LockErrorCode.UnsupportedVersion,
-            operation = LockOperation.Read,
-            path = Some(lockPath.toString),
-            message = s"Lock '$lockPath' requires format version 2 for sync. " +
-              s"Rebuild it with 'ohi lock --project ${CliFormatting.quote(directory.toString)}' when ohi.yaml exists, or regenerate it with its originating application.",
-          ),
-        )
-    }
+    existing.foreach(requireVersion2)
     val current = declaration match {
-      case Some(value) =>
-        existing.filter { complete =>
-          ProjectLock.requirements(complete).sortBy(dependency =>
-            (dependency.ontology, stringify(dependency.format)),
-          ) == value.dependencies.sortBy(dependency =>
-            (dependency.ontology, stringify(dependency.format)),
-          )
-        }
-      case None => existing
+      case Some(value) if mode != Project.LockMode.Frozen => existing.filter(matches(value, _))
+      case _ => existing
     }
+    if current.isEmpty && declaration.nonEmpty then
+      mode match {
+        case Project.LockMode.Locked => throw outdated(existing.isEmpty, Some("--locked"))
+        case Project.LockMode.Frozen => throw outdated(missing = true, Some("--frozen"))
+        case Project.LockMode.Update =>
+      }
     val complete = current.getOrElse {
       val requirements = declaration.getOrElse {
         throw new ProjectException(
@@ -208,6 +207,37 @@ private[cli] final class Project(
     LockDownload.ensureIgnore(plan)
     result(LockDownload.install(plan, fetch))
   }
+
+  private def requireVersion2(complete: lock.Lock): Unit =
+    if complete.formatVersion != 2 then
+      throw new LockException(
+        LockError(
+          code = LockErrorCode.UnsupportedVersion,
+          operation = LockOperation.Read,
+          path = Some(lockPath.toString),
+          message =
+            s"Lock '$lockPath' requires format version 2 for ${operation.toString.toLowerCase}. " +
+              s"Rebuild it with '$lockCommand' when ohi.yaml exists, or regenerate it with its originating application.",
+        ),
+      )
+
+  /** Whether the lock's direct requirements are the declared dependencies, in any order. */
+  private def matches(declaration: Declaration, complete: lock.Lock): Boolean =
+    ProjectLock.requirements(complete).sortBy(dependency =>
+      (dependency.ontology, stringify(dependency.format)),
+    ) == declaration.dependencies.sortBy(dependency =>
+      (dependency.ontology, stringify(dependency.format)),
+    )
+
+  private def outdated(missing: Boolean, option: Option[String] = None): ProjectException =
+    new ProjectException(
+      ProjectErrorCode.LockOutdated,
+      (if missing then s"Lock '$lockPath' is missing."
+       else s"Lock '$lockPath' doesn't match the dependencies in '$declarationPath'.") +
+        s" Update it with '$lockCommand'" + option.fold(".")(value => s", or run without $value."),
+    )
+
+  private def lockCommand: String = s"ohi lock --project ${CliFormatting.quote(directory.toString)}"
 
   private def prepare(selected: DownloadDestination, complete: lock.Lock): LockDownload.Plan = {
     destination = Some(selected)
@@ -268,6 +298,7 @@ private[cli] final class Project(
   def recoveryCommand(cause: Throwable, retry: String): String = cause match {
     case _: LockDownload.InstallationException =>
       s"ohi sync --project ${CliFormatting.quote(directory.toString)}"
+    case failure: ProjectException if failure.code == ProjectErrorCode.LockOutdated => lockCommand
     case _ => retry
   }
 
@@ -366,4 +397,20 @@ private[cli] final class Project(
           Some(cause),
         )
     }
+}
+
+private[cli] object Project {
+
+  /** How `sync` treats a lock that is missing or doesn't match the declaration. */
+  enum LockMode {
+
+    /** Update the lock. */
+    case Update
+
+    /** Fail instead of updating the lock. */
+    case Locked
+
+    /** Install the lock as is, without checking it against the declaration. */
+    case Frozen
+  }
 }

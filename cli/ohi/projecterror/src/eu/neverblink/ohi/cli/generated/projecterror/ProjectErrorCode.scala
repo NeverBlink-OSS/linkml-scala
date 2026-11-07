@@ -34,6 +34,14 @@ object ProjectErrorCode {
     */
   @named("INVALID_SELECTION") case object InvalidSelection extends ProjectErrorCode
 
+  /** The ohi.lock.json file is missing or doesn't match the dependencies in ohi.yaml, and the
+    * command was asked not to update it.
+    *
+    * @see
+    *   From schema: https://ohi.neverblink.eu/contracts/project-error
+    */
+  @named("LOCK_OUTDATED") case object LockOutdated extends ProjectErrorCode
+
   /** A file system operation on the project failed.
     *
     * @see

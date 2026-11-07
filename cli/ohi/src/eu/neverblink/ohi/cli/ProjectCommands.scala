@@ -197,6 +197,8 @@ final case class LockOptions(
     @HelpMessage("Directory containing ohi.yaml\nDefault: current directory")
     @ValueDescription("<directory>")
     project: String = ".",
+    @HelpMessage("Only check that ohi.lock.json matches the dependencies in ohi.yaml")
+    check: Boolean = false,
     @HelpMessage("Write JSON output")
     json: Boolean = false,
 ) extends ProjectOptions
@@ -212,7 +214,7 @@ private[cli] class LockCommand extends ProjectCommand[LockOptions] {
       project: Project,
   ): ProjectResult = {
     val catalog = client()
-    project.refresh(catalog.inspect)
+    project.refresh(catalog.inspect, options.check)
   }
 
   protected def client(): CatalogClient = new CatalogClient()
@@ -230,6 +232,10 @@ final case class SyncOptions(
     project: String = ".",
     @HelpMessage("Create a missing ohi.yaml from the lock's direct selections")
     init: Boolean = false,
+    @HelpMessage("Fail instead of updating ohi.lock.json")
+    locked: Boolean = false,
+    @HelpMessage("Install ohi.lock.json without checking it against ohi.yaml")
+    frozen: Boolean = false,
     @HelpMessage("Request timeout in milliseconds (Default: 30000)")
     @ValueDescription("<number>")
     timeoutMs: Option[Int] = None,
@@ -254,8 +260,13 @@ private[cli] class SyncCommand extends ProjectCommand[SyncOptions] {
       inputs: Seq[String],
       project: Project,
   ): ProjectResult = {
+    if options.locked && options.frozen then
+      correction("--locked and --frozen cannot be used together.")
+    val mode = if options.locked then Project.LockMode.Locked
+    else if options.frozen then Project.LockMode.Frozen
+    else Project.LockMode.Update
     val catalog = client(options)
-    project.sync(catalog.inspect, catalog.get, options.init)
+    project.sync(catalog.inspect, catalog.get, options.init, mode)
   }
 }
 
