@@ -11,7 +11,7 @@ object `package` extends Module, NativeOptional {
   object jvm
       extends ResourcesAsStrings("tests"),
         ModelCatalogueEntries,
-        CommonModule,
+        CommonBuildModule,
         CommonTestModule {
     def moduleDeps = Seq(
       build.schemaview.jvm,

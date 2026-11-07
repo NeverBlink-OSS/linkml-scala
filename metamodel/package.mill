@@ -71,7 +71,7 @@ object `package` extends Module, NativeOptional, LinkMlModelModule {
     }
   }
 
-  object js extends NoBspModule, CommonScalaJsModule, ResourcesAsStrings("metamodel") {
+  object js extends CommonModule, NoBspModule, CommonScalaJsModule, ResourcesAsStrings("metamodel") {
     def moduleDeps = Seq(
       build.yaml.js,
     )
@@ -87,7 +87,7 @@ object `package` extends Module, NativeOptional, LinkMlModelModule {
     }
   }
 
-  object native extends NoBspModule, CommonScalaNativeModule, ResourcesAsStrings("metamodel") {
+  object native extends CommonModule, NoBspModule, CommonScalaNativeModule, ResourcesAsStrings("metamodel") {
     def moduleDeps = Seq(
       build.yaml.native,
     )

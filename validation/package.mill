@@ -26,7 +26,7 @@ object `package` extends Module, NativeOptional, LinkMlModelModule {
     object test extends ScalaTests, CommonTestModule
   }
 
-  object js extends NoBspModule, CommonScalaJsModule {
+  object js extends CommonModule, NoBspModule, CommonScalaJsModule {
     def moduleDeps = Seq(
       build.yaml.js,
     )
@@ -34,7 +34,7 @@ object `package` extends Module, NativeOptional, LinkMlModelModule {
     object test extends ScalaJSTests, CommonTestModule
   }
 
-  object native extends NoBspModule, CommonScalaNativeModule {
+  object native extends CommonModule, NoBspModule, CommonScalaNativeModule {
     def moduleDeps = Seq(
       build.yaml.native,
     )

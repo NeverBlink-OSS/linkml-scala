@@ -16,7 +16,7 @@ object `package` extends Module, LinkMlModelModule {
 
   def modelPackage = "eu.neverblink.linkml.tests.conformance"
 
-  object jvm extends CommonModule {
+  object jvm extends CommonBuildModule {
     def moduleDeps = Seq(
       build.yaml.jvm,
     )

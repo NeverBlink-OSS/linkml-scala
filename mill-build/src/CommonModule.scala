@@ -32,10 +32,22 @@ trait CommonBuildModule
 }
 
 trait CommonModule extends CommonBuildModule, GitVersionPublishModule {
+
+  /** Removes Inkuire, the search by type signature, which does nothing without
+    * `-Ygenerate-inkuire`. The search bar starts its worker on every page, hence the empty worker.
+    */
+  override def scalaDocGenerated: T[PathRef] = Task {
+    val docs = Task.dest / "docs"
+    os.copy(super.scalaDocGenerated().path, docs)
+    os.remove(docs / "scripts" / "inkuire.js")
+    os.write.over(docs / "scripts" / "inkuire-worker.js", "")
+    PathRef(docs)
+  }
+
   final def pomSettings = PomSettings(
     description =
       "A Scala 3 cross-platform library and CLI for LinkML schema validation and multi-format code generation (Scala, JSON Schema, SHACL, RDFS)",
-    organization = "eu.neverblink.linkml",
+    organization = CommonModule.organization,
     url = "https://github.com/NeverBlink-OSS/ohi",
     licenses = Seq(License.`Apache-2.0`),
     versionControl = VersionControl.github("NeverBlink-OSS", "linkml-scala"),
@@ -49,4 +61,8 @@ trait CommonModule extends CommonBuildModule, GitVersionPublishModule {
       ),
     ),
   )
+}
+
+object CommonModule {
+  val organization = "eu.neverblink.linkml"
 }
