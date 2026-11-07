@@ -11,7 +11,7 @@ This page shows how ohi LinkML combines two kinds of them, where the LinkML spec
 - [Boolean expressions](#boolean-expressions): `any_of`, `all_of`, `exactly_one_of` and `none_of`, which are lists of conditions.
   ohi LinkML works differently from both the specification and LinkML-Python here.
 
-It also shows what the generators do with [slots that a class changes](#slots-that-a-class-changes) in ways that a parent class can't pass down in their output.
+It also shows what the generators do when a class changes an inherited slot in a way that their output can't express in the parent class: see [Slots that a class changes](#slots-that-a-class-changes).
 
 ## Boolean metaslots
 
@@ -112,8 +112,8 @@ The JSON Schema and Pydantic generators do not support boolean expressions yet.
 
 ## Slots that a class changes
 
-In some outputs a subclass inherits what its parent class says about a field: the fields of a GraphQL interface, the `def`s of a Scala abstract class, the restrictions of an OWL class, and the fields of a Pydantic class.
-A `slot_usage` can change a slot in ways that these outputs can't pass down.
+Some outputs pass what a parent class says about a field down to its subclasses: GraphQL interfaces, Scala abstract classes and traits, OWL class restrictions, and Pydantic classes.
+A `slot_usage` can change a slot in a way that these outputs can't pass down:
 
 ```yaml
 classes:
@@ -134,19 +134,16 @@ slots:
 In GraphQL, `Child` can't implement the `labels: String` field of `Base`'s interface with a list.
 In OWL, `Child` can't drop the `owl:maxCardinality 1` that it inherits from `Base`.
 
-So these generators describe a slot in a class only when every descendant has a version of it that fits.
+So a parent describes a slot only when the versions of all its descendants fit.
 Otherwise the descendants describe their own versions:
 
-| Generator | A class leaves out a slot when a descendant changes its | Then |
-|-----------|---------------------------------------------------------|------|
+| Generator | When a descendant changes the slot's | Then |
+|-----------|--------------------------------------|------|
 | GraphQL   | name (`alias`), `multivalued`, or range to one that is not a subtype | The interface leaves out the field. Each type still has it. |
-| Scala     | Scala type, for example with `required`, `multivalued` or a narrower class range | The abstract class or trait leaves out the `def`. A subclass whose descendants all give the field the same type declares it. |
+| Scala     | Scala type, for example with `required`, `multivalued` or a narrower class range | The abstract class or trait leaves out the `def`. Subclasses declare it where it fits all their descendants. |
 | OWL       | `multivalued`, or range to one that is not derived from it | The class leaves out the `owl:maxCardinality 1` or the `owl:allValuesFrom`. Only the subclasses that keep it state it. |
+| OWL       | `slot_uri` | The subclass declares the new property, and states all restrictions of the slot on it, including those from the `slot_usage` of its parents. |
 | Pydantic  | JSON key (`alias`) | The subclass removes the inherited field, so loading rejects the old key. |
 
-In OWL, a subclass that gives the slot another `slot_uri` uses another property.
-It states all the restrictions of the slot for that property, with the `slot_usage` of its parent classes and mixins, and the property is declared.
-
-The LinkML specification only lets a class narrow an inherited range: to a subclass of it, or to a type with it as a `typeof` ancestor.
-ohi LinkML also accepts a member of a `union_of` type, and the built-in types that hold only values of another one: `ncname` for `string`, and `uri` or `curie` for `uriorcurie`.
-`validate` warns about a class that gives an inherited slot any other range, such as an enum in place of `string`.
+`validate` warns about a class that gives an inherited slot a range that is not derived from the parent's range.
+See [Narrowing inherited ranges](/docs/implementation-differences/#narrowing-inherited-ranges).

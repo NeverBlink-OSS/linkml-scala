@@ -35,8 +35,9 @@ final class SharedSlots(compatible: (AttributeView, AttributeView) => Boolean) {
     )
 
   /** The slots of the class that some descendant does not share. A slot that a child does not share
-    * with its own descendants is not shared with the class either, which is simpler than comparing
-    * the class with each descendant, and errs on the side of describing the slot lower.
+    * with its own descendants is not shared with the class either. This is simpler than comparing
+    * the class with each descendant, but it can leave the slot to a subclass even when the class
+    * could describe it.
     */
   private def unsharedOf(cls: ClassView): collection.Set[String] = {
     val known = unshared.getOrElse(cls.name, null)

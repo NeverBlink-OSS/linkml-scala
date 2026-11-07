@@ -112,12 +112,10 @@ final case class SchemaView(schemas: Seq[SchemaDefinition]) extends ReferenceRes
   /** Whether the element named `name` is the element named `ancestor`, or is derived from it: a
     * class with it among its ancestors, or a type with it among its `typeof` ancestors.
     *
-    * Some built-in types hold only values of another built-in type, without a `typeof` between
-    * them. A type based on one of them is derived from the other too: `ncname` from `string`, and
-    * `uri` and `curie` from `uriorcurie`. That is when the other type has no `typeof` and no
-    * constraints, so it holds all values of its base, as the built-in types do.
-    *
-    * A type derived from a member of a `union_of` type is derived from the union too.
+    * A type is also derived from:
+    *   - a type without `typeof` or constraints whose built-in type holds all its values: `string`
+    *     for `ncname`, and `uriorcurie` for `uri` and `curie`
+    *   - a `union_of` type with a member that it is derived from
     */
   def isDerivedFrom(name: String, ancestor: String): Boolean =
     name == ancestor ||
@@ -139,7 +137,7 @@ final case class SchemaView(schemas: Seq[SchemaDefinition]) extends ReferenceRes
       t.maximumLength.isEmpty && t.equalsString.isEmpty && t.equalsStringIn.isEmpty &&
       t.equalsNumber.isEmpty
 
-  /** Whether all values of the first built-in type are values of the second. */
+  /** Whether all values of the built-in type `runtimeType` are values of `other`. */
   private def holdsValuesOf(runtimeType: RuntimeType, other: RuntimeType): Boolean =
     other match {
       case _: StringType.type => runtimeType eq NcNameType
