@@ -451,39 +451,75 @@ object JsonSchemaGenerator {
   private def anyOfOrOne(schemas: Seq[Schema]): Schema =
     if schemas.sizeIs == 1 then schemas.head else Schema(anyOf = schemas.toList)
 
-  /** Joins the schemas into one, or into `allOf` if their keywords clash. */
+  /** Joins the schemas into one, or into `allOf` if their keywords clash.
+    *
+    * Keywords clash when two schemas set the same one of `pattern`, `minimum`, `maximum`, `anyOf`,
+    * `oneOf`, `allOf` or `not`, or when a schema after the first non-empty one sets `$ref` or
+    * `type`. Other keywords come from the first non-empty schema only.
+    */
   private def merged(schemas: Schema*): Schema = {
-    val nonEmpty = schemas.filter(_ != Schema.Empty)
-    def keywords(s: Schema): Seq[String] = Seq(
-      Option.when(s.$ref.isDefined)("$ref"),
-      Option.when(s.`type`.isDefined)("type"),
-      Option.when(s.pattern.isDefined)("pattern"),
-      Option.when(s.minimum.isDefined)("minimum"),
-      Option.when(s.maximum.isDefined)("maximum"),
-      Option.when(s.anyOf.nonEmpty)("anyOf"),
-      Option.when(s.oneOf.nonEmpty)("oneOf"),
-      Option.when(s.allOf.nonEmpty)("allOf"),
-      Option.when(s.not.isDefined)("not"),
-    ).flatten
-    nonEmpty match {
-      case Seq() => Schema.Empty
-      case Seq(one) => one
-      case Seq(first, rest*)
-          if rest.forall(r => keywords(r).forall(k => k != "$ref" && k != "type")) &&
-            nonEmpty.flatMap(keywords).distinct.sizeIs == nonEmpty.map(keywords(_).size).sum =>
-        rest.foldLeft(first) { (a, b) =>
-          a.copy(
-            pattern = a.pattern.orElse(b.pattern),
-            minimum = a.minimum.orElse(b.minimum),
-            maximum = a.maximum.orElse(b.maximum),
-            anyOf = a.anyOf ++ b.anyOf,
-            oneOf = a.oneOf ++ b.oneOf,
-            allOf = a.allOf ++ b.allOf,
-            not = a.not.orElse(b.not),
-          )
+    var first: Schema = null
+    var count = 0
+    var clash = false
+    var pattern = Schema.Empty.pattern
+    var minimum = Schema.Empty.minimum
+    var maximum = Schema.Empty.maximum
+    var anyOf = Schema.Empty.anyOf
+    var oneOf = Schema.Empty.oneOf
+    var allOf = Schema.Empty.allOf
+    var not = Schema.Empty.not
+    val size = schemas.size
+    var i = 0
+    while (i < size && !clash) {
+      val s = schemas(i)
+      if (s != Schema.Empty) {
+        count += 1
+        if (first eq null) first = s
+        else if (s.$ref.isDefined || s.`type`.isDefined) clash = true
+        if (s.pattern.isDefined) {
+          if (pattern.isDefined) clash = true
+          else pattern = s.pattern
         }
-      case _ => Schema(allOf = nonEmpty.toList)
+        if (s.minimum.isDefined) {
+          if (minimum.isDefined) clash = true
+          else minimum = s.minimum
+        }
+        if (s.maximum.isDefined) {
+          if (maximum.isDefined) clash = true
+          else maximum = s.maximum
+        }
+        if (s.anyOf.nonEmpty) {
+          if (anyOf.nonEmpty) clash = true
+          else anyOf = s.anyOf
+        }
+        if (s.oneOf.nonEmpty) {
+          if (oneOf.nonEmpty) clash = true
+          else oneOf = s.oneOf
+        }
+        if (s.allOf.nonEmpty) {
+          if (allOf.nonEmpty) clash = true
+          else allOf = s.allOf
+        }
+        if (s.not.isDefined) {
+          if (not.isDefined) clash = true
+          else not = s.not
+        }
+      }
+      i += 1
     }
+    if (clash) Schema(allOf = schemas.filter(_ != Schema.Empty).toList)
+    else if (count == 0) Schema.Empty
+    else if (count == 1) first
+    else
+      first.copy(
+        pattern = pattern,
+        minimum = minimum,
+        maximum = maximum,
+        anyOf = anyOf,
+        oneOf = oneOf,
+        allOf = allOf,
+        not = not,
+      )
   }
 
   type MappedClassName = String
