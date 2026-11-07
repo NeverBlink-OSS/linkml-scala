@@ -62,7 +62,7 @@ object LinkMlNativeApi {
     */
   final val abiVersion: Int = 4
 
-  private val schemas = new ConcurrentHashMap[java.lang.Long, SchemaView]()
+  private val schemas = new ConcurrentHashMap[_root_.java.lang.Long, SchemaView]()
 
   private val handleSeq = new AtomicLong(0L)
 
