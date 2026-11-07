@@ -3,7 +3,7 @@
 import * as esbuild from "esbuild";
 import { spawnSync } from "node:child_process";
 
-const TESTS = ["test/markdown.test.ts"];
+const TESTS = ["test/markdown.test.ts", "test/targets.test.ts"];
 const OUT = "dist/test";
 
 await esbuild.build({

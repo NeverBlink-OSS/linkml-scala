@@ -396,6 +396,26 @@ body { background: var(--bg); }
 .faq-body code { font-family: var(--code-font); font-size: 12px; }
 .faq-foot { padding-top: 12px; font-size: 12px; color: var(--text-muted); }
 
+/* The link to the docs, first in the help dialog and set apart as a card, since the docs answer
+   far more than the questions below. */
+.faq-body .faq-docs {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 8px 0 4px;
+  padding: 12px 14px;
+  border: 1px solid var(--accent-border);
+  border-radius: var(--radius-sm);
+  background: var(--accent-soft);
+  color: var(--text);
+}
+.faq-body .faq-docs:hover { text-decoration: none; border-color: var(--accent); }
+.faq-docs-ic { width: 22px; height: 22px; flex-shrink: 0; color: var(--accent-strong); }
+.faq-docs-text { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+.faq-docs-text strong { font-size: 14px; font-weight: 600; }
+.faq-docs-text span { font-size: 12px; color: var(--text-secondary); }
+.faq-docs-arrow { width: 16px; height: 16px; flex-shrink: 0; color: var(--accent-strong); }
+
 /* Label/value pairs, laid out as two columns. `auto` on the first keeps the values aligned with
    each other while the labels stay only as wide as the longest one. */
 .build-info {
@@ -515,6 +535,12 @@ body { background: var(--bg); }
 .dir-btn--active,
 .dir-btn--active:hover { color: var(--text-on-accent); background: var(--accent); font-weight: 600; }
 
+/* The direction as a list, which the narrow layout uses in place of the toggle above. It takes
+   the target picker's styles (see below), sized to its own label. */
+.dir-combo { display: none; flex-shrink: 0; }
+.dir-combo .combo-button { width: auto; }
+.dir-combo .combo-list:focus { outline: none; }
+
 /* ── Target combobox ── */
 
 .combo { position: relative; }
@@ -598,6 +624,11 @@ body { background: var(--bg); }
 .combo-option--active { background: var(--accent-soft); color: var(--text); }
 
 .combo-empty { padding: 7px 11px; font-size: 13px; color: var(--text-muted); }
+
+/* The settings button and its popup belong to the narrow layout. Elsewhere the button is gone and
+   the popup's box is dissolved, for the same reason as `.options-row` below. */
+.settings-toggle { display: none; }
+.settings-panel { display: contents; }
 
 .toolbar-right {
   margin-left: auto;
@@ -729,6 +760,9 @@ body { background: var(--bg); }
 .reverse-btn { width: 26px; height: 26px; }
 .reverse-btn[hidden] { display: none; }
 .reverse-btn .ic { width: 15px; height: 15px; }
+/* Sized like the reverse button beside it. */
+.output-help { width: 26px; height: 26px; }
+.output-help .ic { width: 16px; height: 16px; }
 
 .status-pill {
   font-size: 11px;
@@ -812,6 +846,30 @@ body { background: var(--bg); }
 }
 .file-tab:hover { color: var(--text); }
 .file-tab--active { color: var(--accent); border-bottom-color: var(--accent); }
+
+/* A pair of views moved into the Output bar on a phone (see placeFileTabs in app.ts): a two-way
+   switch, drawn like the From/To toggle. */
+.file-tabs--switch {
+  flex-shrink: 0;
+  margin-right: auto;
+  gap: 2px;
+  padding: 2px;
+  overflow: visible;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+}
+.file-tabs--switch .file-tab {
+  margin: 0;
+  padding: 3px 9px;
+  border: none;
+  border-radius: calc(var(--radius-sm) - 2px);
+  font-family: inherit;
+  font-weight: 500;
+}
+.file-tabs--switch .file-tab:hover { background: var(--accent-soft); }
+.file-tabs--switch .file-tab--active,
+.file-tabs--switch .file-tab--active:hover { color: var(--text-on-accent); background: var(--accent); font-weight: 600; }
 
 /* ── Rendered Mermaid diagram ── */
 .diagram {
@@ -958,25 +1016,73 @@ body { background: var(--bg); }
 @media (max-width: 640px) {
   /* Tighter everywhere; reclaim the horizontal margins for content width. */
   .app-header { padding: 8px 12px; }
-  .app-footer { padding: 8px 12px; }
+  /* The footer's links and the NeverBlink mark take room the editors need more. */
+  .app-footer { display: none; }
   .workspace { padding: 8px 0 10px; gap: 8px; }
-  .toolbar { padding: 6px 8px; gap: 8px; border-radius: 0; }
+  /* The toolbar is one row here: the direction becomes a dropdown, the options and Auto move into
+     a popup behind the settings button, and the target picker takes whatever width is left. */
+  .toolbar { position: relative; flex-wrap: nowrap; padding: 6px 8px; gap: 8px; border-radius: 0; }
   .toolbar-right { gap: 8px; }
+  #dirToggle { display: none; }
+  .dir-combo { display: block; }
+  #targetCombo { flex: 1; min-width: 0; }
+  #targetButton { width: 100%; }
+  /* The settings button and Generate are as tall as the two lists. */
+  .settings-toggle {
+    display: grid;
+    flex-shrink: 0;
+    width: 36px;
+    height: 36px;
+    border: 1px solid var(--border-strong);
+    background: var(--surface-2);
+    color: var(--text);
+  }
+  .settings-toggle .ic { width: 18px; height: 18px; }
+  .settings-toggle[aria-expanded="true"] { border-color: var(--accent); }
+
+  .settings-panel { display: none; }
+  .settings-panel--open {
+    position: absolute;
+    z-index: 20;
+    top: calc(100% + 4px);
+    right: 8px;
+    max-width: calc(100% - 16px);
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--surface);
+    box-shadow: var(--shadow);
+  }
+  /* The dividers keep options apart in a row; in a column they only add clutter. */
+  .settings-panel .opt-field::after { display: none; }
+  .settings-panel .opt-field { flex-wrap: wrap; white-space: normal; }
+  .settings-panel .opt-field input[type="text"] { max-width: 100%; }
+  .auto-toggle { padding: 0; }
   .split { gap: 8px; }
   .panel { border-radius: 0; }
+  .panel-head { padding: 6px 12px; }
 
   .brand-home { display: none; }
   .brand { gap: 8px; }
   .header-actions { gap: 8px; }
-  /* The repo name and its star/fork counts say the same thing in less width. */
+  /* The repo name and its star count say the same thing in less width. */
   .repo-link { padding: 4px 9px; }
   .repo-icon { display: none; }
   .repo-owner { display: none; }
+  .repo-stat--forks { display: none; }
 
   /* With Auto on, Generate only repeats what has already happened, so the row is better spent on
      the options. It comes back the moment Auto is switched off, which is when it is the only way
      to run anything. */
   .toolbar-right:has(#autoGenerate:checked) #generateBtn { display: none; }
+  /* With Auto off, Generate keeps its icon only, so it still fits in the row. */
+  #generateBtn .btn-label { display: none; }
+  #generateBtn { height: 36px; padding: 0 10px; }
+  #generateBtn .ic { width: 16px; height: 16px; }
 
   /* Clear is the one of the three that the editor itself can do, so it goes first when the row
      runs out of width. Dropping the format sub-label buys the rest: it is what pushes the
@@ -992,9 +1098,6 @@ body { background: var(--bg); }
   #share .ic { width: 1.5em; height: 1.5em; }
   #share { padding: 5px 8px; }
 
-  /* Footer: keep just the "Built by NeverBlink" mark; the link row is too much. */
-  .footer-links { display: none; }
-  .app-footer { justify-content: flex-start; }
 }
 
 /* ── Validation report ─────────────────────────────────────────────────────── */
