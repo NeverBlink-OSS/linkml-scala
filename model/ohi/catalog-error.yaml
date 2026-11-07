@@ -13,7 +13,7 @@ classes:
     tree_root: true
     slots:
     - message
-    - url
+    - target_url
     attributes:
       code:
         description: Stable SDK failure category.

@@ -80,7 +80,7 @@ Some source files are generated and committed. CI regenerates them and fails if 
 | `generator.options`, `cli.options`                     | `model/converter/all_converters.yaml` |
 | `generator/npm/generator-options.d.ts`, `generator/npm/importer-options.d.ts` | `model/converter/all_generators.yaml`, `model/converter/all_importers.yaml` |
 | `tests.conformance`                                    | the conformance suite's model.yaml |
-| `ohi.model.*`, `cli.ohi.*`, `ohi/python/src/ohi/generated*.py`, `ohi/typescript/src/generated*.ts` | `model/ohi/`, `model/ohi/cli/` |
+| `ohi.model.*`, `cli.ohi.*`, `ohi/python/src/ohi/generated*.py`, `ohi/typescript/src/generated*.ts`, the generated classes in `ohi/java/src/` | `model/ohi/`, `model/ohi/cli/` |
 | Agent skill references in `.agents/skills/linkml/`     | the metamodel, four LinkML docs pages and `tests/resources/models/`, see [.agents/README.md](.agents/README.md#maintenance) |
 | `ui/src/linkml.d.ts`                                   | `LinkMlJsApi.scala`, with `./mill ui.types` |
 | `python/ohi_linkml/_generated.py`, `LinkMlCGenerators.scala` | `model/converter/all_converters.yaml`, with `LINKML_NATIVE=1 ./mill nativelib.bindings` |
@@ -134,13 +134,14 @@ The CLI executables are GraalVM native images. Mill downloads GraalVM.
 
 ### ohi SDKs
 
-The Scala, Python and TypeScript SDKs live in [`ohi/`](ohi/). To test them, run from the repository root:
+The Java, Scala, Python and TypeScript SDKs live in [`ohi/`](ohi/). To test them, run from the repository root:
 
 ```shell
 ./mill --no-server regenerate
 python -m pip install ./ohi/python
 npm --prefix ohi/typescript ci
 ./mill --no-server 'ohi.{model,catalog}.jvm.test.testForked'
+./mill --no-server ohi.java.test
 python -m unittest discover -s ohi/python/tests -v
 npm --prefix ohi/typescript test
 npm --prefix ohi/typescript run test:browser   # browser checks, needs Chrome

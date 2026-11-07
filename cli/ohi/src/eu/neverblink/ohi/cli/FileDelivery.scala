@@ -177,7 +177,7 @@ private[cli] object FileDelivery {
     CliFileError(
       code = code,
       message = message,
-      url = url,
+      targetUrl = url,
       directory = directory,
       path = path.map(_.toString),
       partialPath = partialPath.map(_.toString),

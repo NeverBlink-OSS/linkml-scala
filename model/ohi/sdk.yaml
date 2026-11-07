@@ -1,0 +1,17 @@
+id: https://ohi.neverblink.eu/contracts/sdk
+name: ohi_sdk
+title: ohi SDK models
+description: >-
+  All the models of the ohi SDKs, for generators that write them into one package.
+prefixes:
+  ohi: https://ohi.neverblink.eu/contracts/
+  linkml: https://w3id.org/linkml/
+default_prefix: ohi
+imports:
+- package
+- search
+- search-request
+- catalog-config
+- catalog-error
+- lock
+- lock-error

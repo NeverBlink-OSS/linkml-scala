@@ -15,7 +15,7 @@ import eu.neverblink.linkml.runtime.*
   *   Parsed JSON object from an HTTP failure, preserving nested server fields.
   * @param status
   *   HTTP response status when visible to the client.
-  * @param url
+  * @param targetUrl
   *   Original target supplied by the caller, when available.
   * @see
   *   From schema: https://ohi.neverblink.eu/contracts/catalog-error
@@ -27,7 +27,8 @@ final case class CatalogError(
     @named("response_json")
     responseJson: Option[LinkmlAny] = None,
     status: Option[Int] = None,
-    url: Option[String] = None,
+    @named("url")
+    targetUrl: Option[String] = None,
 ) {
 
   /** Fill in the slots that have an `equals_expression` with their computed values, and check that

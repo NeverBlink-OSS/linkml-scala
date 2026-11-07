@@ -85,7 +85,7 @@ class HubArtifactPathSpec extends AnyWordSpec, Matchers {
       s"reject malformed publication route $invalid" in {
         val error = intercept[CliFileException](HubArtifactPath.publication(invalid, ".ohi")).error
         error.code shouldBe CliFileErrorCode.UnsupportedFilename
-        error.url shouldBe invalid
+        error.targetUrl shouldBe invalid
         error.directory shouldBe ".ohi"
         error.path shouldBe None
       }
@@ -104,7 +104,7 @@ class HubArtifactPathSpec extends AnyWordSpec, Matchers {
           HubArtifactPath.relative(base, invalid, Format.LinkmlYaml, ".ohi"),
         ).error
         error.code shouldBe CliFileErrorCode.UnsupportedFilename
-        error.url shouldBe invalid
+        error.targetUrl shouldBe invalid
         error.path shouldBe None
       }
   }

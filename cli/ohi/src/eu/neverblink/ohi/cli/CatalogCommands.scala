@@ -76,7 +76,7 @@ abstract class CatalogCommand[T <: HasCatalogOptions: {Parser, Help}] extends Oh
               stringify(error.code),
               stringify(error.operation),
               error.message,
-              error.url,
+              error.targetUrl,
               error.status,
               error.responseJson,
               timeoutOption = true,
@@ -94,7 +94,7 @@ abstract class CatalogCommand[T <: HasCatalogOptions: {Parser, Help}] extends Oh
             val (diagnostic, recovery) = ErrorOutput.file(
               stringify(error.code),
               error.message,
-              error.url,
+              error.targetUrl,
               error.directory,
               error.path,
               error.partialPath,

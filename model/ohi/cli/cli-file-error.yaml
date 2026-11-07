@@ -13,10 +13,10 @@ classes:
     tree_root: true
     slots:
     - message
-    - url
+    - target_url
     - path
     slot_usage:
-      url:
+      target_url:
         required: true
     attributes:
       code:

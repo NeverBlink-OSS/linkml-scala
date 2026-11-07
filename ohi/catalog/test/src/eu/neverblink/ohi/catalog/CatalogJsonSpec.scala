@@ -174,7 +174,7 @@ class CatalogJsonSpec extends AnyWordSpec, Matchers {
         code = CatalogErrorCode.HttpError,
         message = "unavailable",
         operation = CatalogOperation.Search,
-        url = Some("https://example.org/search"),
+        targetUrl = Some("https://example.org/search"),
         status = Some(503),
         responseJson = CatalogClient.responseObject(
           """{"details":{"unknown":[1,null]},"recovery":{"args":{"key":null}}}""",

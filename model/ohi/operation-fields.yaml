@@ -13,7 +13,8 @@ slots:
     range: string
     required: true
     pattern: ^[\s\S]*\S
-  url:
+  target_url:
+    alias: url
     description: Original target supplied by the caller, when available.
     range: string
   path:

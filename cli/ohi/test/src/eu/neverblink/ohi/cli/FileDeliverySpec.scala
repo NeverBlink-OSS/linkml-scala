@@ -173,7 +173,7 @@ class FileDeliverySpec extends AnyWordSpec, Matchers {
             message = "File is unavailable",
             operation = CatalogOperation.Get,
             status = Some(404),
-            url = Some(url),
+            targetUrl = Some(url),
           ),
         )
         val actual = intercept[CatalogException] {
@@ -183,7 +183,7 @@ class FileDeliverySpec extends AnyWordSpec, Matchers {
         actual.error.code shouldBe CatalogErrorCode.HttpError
         actual.error.operation shouldBe CatalogOperation.Get
         actual.error.status shouldBe Some(404)
-        actual.error.url shouldBe Some("https://files.example/model.ttl?revision=2")
+        actual.error.targetUrl shouldBe Some("https://files.example/model.ttl?revision=2")
         Files.exists(root.resolve("not-created")) shouldBe false
       }
     }

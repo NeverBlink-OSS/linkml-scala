@@ -66,7 +66,7 @@ class CatalogClientSpec extends AnyWordSpec, Matchers {
     exception.getMessage shouldBe exception.error.message
     exception.error.code shouldBe code
     exception.error.operation shouldBe operation
-    exception.error.url shouldBe url
+    exception.error.targetUrl shouldBe url
     exception.error.status shouldBe status
     exception.error
   }
