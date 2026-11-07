@@ -112,6 +112,32 @@ Dependency files must be selected and retrieved separately.
 A known publication or artifact URL can be passed directly to `inspect` or `get`, without
 searching first.
 
+## Link to ohi.dev
+
+To link a search hit or a publication to its release page on ohi.dev, such as
+`https://ohi.dev/o/w3c/sosa@2017`, pass it to the release page helper.
+
+<Tabs syncKey="language">
+  <TabItem label="Python">
+    ```python
+    from ohi import ohi_release_page
+
+    page_url = ohi_release_page(page.hits[0])
+    ```
+  </TabItem>
+  <TabItem label="TypeScript">
+    ```typescript
+    import { ohiReleasePage } from "@neverblink/ohi";
+
+    const pageUrl = ohiReleasePage(page.hits[0]);
+    ```
+  </TabItem>
+  <TabItem label="Scala">
+    Use `OhiPages.releasePage` in `eu.neverblink.ohi.catalog`. It takes a `SearchHit`, a
+    `Publication`, or a namespace, name and version.
+  </TabItem>
+</Tabs>
+
 ## Configuration
 
 Set `timeout_ms` to change the default 30000 ms timeout.
