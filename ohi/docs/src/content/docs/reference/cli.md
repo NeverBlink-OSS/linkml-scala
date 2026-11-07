@@ -160,7 +160,7 @@ See [Manage ontology projects](/docs/guides/projects/) for the complete workflow
 
 ## sync
 
-`ohi sync [--project <directory>] [--init] [options]`
+`ohi sync [--project <directory>] [--init] [--locked | --frozen] [options]`
 
 Downloads missing files and verifies existing files using `ohi.lock.json`. If you changed the
 dependencies in `ohi.yaml`, or there is no lock yet, sync updates the lock before downloading.
@@ -174,15 +174,18 @@ ohi sync --project ./my-project
 | --- | --- |
 | `--project <directory>` | Directory containing `ohi.yaml`, `ohi.lock.json`, or both. Default is the current directory. |
 | `--init` | Create `ohi.yaml` from a shared lock if it is missing. |
+| `--locked` | Fail instead of updating `ohi.lock.json` when it is missing or doesn't match `ohi.yaml`. |
+| `--frozen` | Install `ohi.lock.json` as it is, without checking it against `ohi.yaml`. Fails if the lock is missing. |
 | `--color <auto\|never>` | Color terminal output. Default `auto`. |
 
 Downloads use `download_dir` from `ohi.yaml`. With only a lockfile, they go into `.ohi/`.
 A new `ohi.yaml` keeps the selected versions and formats, with `default_format: linkml-yaml`
 and `download_dir: .ohi`. If neither project file exists, start with `ohi init` or `ohi add`.
+Use `--locked` in CI to make sure the committed lock matches `ohi.yaml`.
 
 ## lock
 
-`ohi lock [--project <directory>] [--json]`
+`ohi lock [--project <directory>] [--check] [--json]`
 
 Rebuilds `ohi.lock.json` using the versions and formats in `ohi.yaml`, without downloading files.
 
@@ -190,7 +193,10 @@ Rebuilds `ohi.lock.json` using the versions and formats in `ohi.yaml`, without d
 ohi lock --project ./my-project
 ```
 
-`--project` defaults to the current directory.
+| Option                  | Effect                                                                                                                                      |
+|-------------------------|---------------------------------------------------------------------------------------------------------------------------------------------|
+| `--project <directory>` | Directory containing `ohi.yaml`. Default is the current directory.                                                                          |
+| `--check`               | Only check that `ohi.lock.json` matches the dependencies in `ohi.yaml`. Fails if it doesn't or if it is missing. Does not change any files. |
 
 ## linkml
 

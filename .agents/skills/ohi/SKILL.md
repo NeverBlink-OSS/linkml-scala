@@ -23,6 +23,7 @@ Use a CLI from the same checkout or release as this skill. Check `ohi <command> 
 | Restore downloads or apply edited dependencies | [`ohi sync [--project <directory>]`](references/cli.md#synchronize-downloads) |
 | Create an editable project from a shared lock | `ohi sync --init [--project <directory>]` |
 | Rebuild a project's lock without downloading | `ohi lock [--project <directory>]` |
+| Check that a lock matches the declaration, or install without updating it | `ohi lock --check`, `ohi sync --locked` or `ohi sync --frozen` |
 
 Read the relevant section of [CLI behavior and recovery](references/cli.md) when interpreting search results, checking downloads or changing project records. Use only the operations the task needs. A supplied Hub URL can skip search for inspection or standalone downloads. Catalog commands require no project and leave project records unchanged.
 

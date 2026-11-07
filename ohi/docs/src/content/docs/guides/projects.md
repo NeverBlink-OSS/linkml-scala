@@ -46,6 +46,10 @@ ohi sync
 ohi downloads the files recorded in `ohi.lock.json` into the project's download folder, `.ohi/`
 by default. Files already present are checked against the saved checksums and reused.
 
+If `ohi.yaml` has changed since the lock was made, `ohi sync` updates the lock first. In CI, use
+`ohi sync --locked` to fail instead, or `ohi lock --check` to check the lock without downloading.
+`ohi sync --frozen` installs the lock as it is, without comparing it to `ohi.yaml`.
+
 If someone shares only `ohi.lock.json`, the same command downloads its files into `.ohi/`.
 To also create an editable `ohi.yaml` from that lock, run:
 

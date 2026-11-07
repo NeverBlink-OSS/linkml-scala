@@ -502,6 +502,103 @@ class ProjectSpec extends AnyWordSpec, Matchers {
         os.exists(directory / ".ohi") shouldBe false
       }
     }
+
+    "check a matching lock without catalog calls or writes" in {
+      withDirectory { directory =>
+        os.write(directory / "ohi.yaml", selectedDeclaration)
+        os.write(directory / "ohi.lock.json", currentLock)
+        val result =
+          new Project(directory.toNIO, ProjectOperation.Lock).refresh(noInspect, check = true)
+        result.lockChanged shouldBe false
+        os.read(directory / "ohi.lock.json") shouldBe currentLock
+      }
+    }
+
+    for (name, lock) <- Seq("an outdated" -> Some(emptyLock), "a missing" -> None) do
+      s"refuse $name lock when checking and point to ohi lock" in {
+        withDirectory { directory =>
+          os.write(directory / "ohi.yaml", selectedDeclaration)
+          lock.foreach(os.write(directory / "ohi.lock.json", _))
+          val project = new Project(directory.toNIO, ProjectOperation.Lock)
+          val failure = intercept[ProjectException](project.refresh(noInspect, check = true))
+          failure.code shouldBe ProjectErrorCode.LockOutdated
+          failure.getMessage should endWith(s"Update it with 'ohi lock --project '$directory''.")
+          project.recoveryCommand(failure, "ohi lock --check") shouldBe
+            s"ohi lock --project '$directory'"
+          error(project, failure, declaration = false, lock = false)
+          lock.foreach(os.read(directory / "ohi.lock.json") shouldBe _)
+          os.exists(directory / "ohi.lock.json") shouldBe lock.nonEmpty
+        }
+      }
+  }
+
+  "project sync with a lock mode" should {
+    "install a matching lock with --locked" in {
+      withDirectory { directory =>
+        os.write(directory / "ohi.yaml", selectedDeclaration)
+        os.write(directory / "ohi.lock.json", currentLock)
+        val result = new Project(directory.toNIO, ProjectOperation.Sync)
+          .sync(noInspect, _ => bytes, mode = Project.LockMode.Locked)
+        result.lockChanged shouldBe false
+        result.files.map(_.url.original) shouldBe Seq(url)
+        os.read(directory / "ohi.lock.json") shouldBe currentLock
+      }
+    }
+
+    for (name, lock) <- Seq("an outdated" -> Some(emptyLock), "a missing" -> None) do
+      s"refuse $name lock with --locked before requests or writes" in {
+        withDirectory { directory =>
+          os.write(directory / "ohi.yaml", selectedDeclaration)
+          lock.foreach(os.write(directory / "ohi.lock.json", _))
+          val project = new Project(directory.toNIO, ProjectOperation.Sync)
+          val failure = intercept[ProjectException](
+            project.sync(noInspect, noFetch, mode = Project.LockMode.Locked),
+          )
+          failure.code shouldBe ProjectErrorCode.LockOutdated
+          failure.getMessage should endWith("or run without --locked.")
+          error(project, failure, declaration = false, lock = false)
+          lock.foreach(os.read(directory / "ohi.lock.json") shouldBe _)
+          os.exists(directory / "ohi.lock.json") shouldBe lock.nonEmpty
+          os.exists(directory / ".ohi") shouldBe false
+        }
+      }
+
+    "install a lock that doesn't match the declaration with --frozen" in {
+      withDirectory { directory =>
+        os.write(directory / "ohi.yaml", emptyDeclaration)
+        os.write(directory / "ohi.lock.json", currentLock)
+        val result = new Project(directory.toNIO, ProjectOperation.Sync)
+          .sync(noInspect, _ => bytes, mode = Project.LockMode.Frozen)
+        result.lockChanged shouldBe false
+        result.files.map(_.url.original) shouldBe Seq(url)
+        os.read(directory / "ohi.lock.json") shouldBe currentLock
+        os.read(directory / "ohi.yaml") shouldBe emptyDeclaration
+      }
+    }
+
+    "refuse a missing lock with --frozen" in {
+      withDirectory { directory =>
+        os.write(directory / "ohi.yaml", selectedDeclaration)
+        val project = new Project(directory.toNIO, ProjectOperation.Sync)
+        val failure = intercept[ProjectException](
+          project.sync(noInspect, noFetch, mode = Project.LockMode.Frozen),
+        )
+        failure.code shouldBe ProjectErrorCode.LockOutdated
+        failure.getMessage should endWith("or run without --frozen.")
+        os.exists(directory / "ohi.lock.json") shouldBe false
+      }
+    }
+
+    for mode <- Seq(Project.LockMode.Locked, Project.LockMode.Frozen) do
+      s"create a declaration from the lock with --init in mode $mode" in {
+        withDirectory { directory =>
+          os.write(directory / "ohi.lock.json", emptyLock)
+          val result = new Project(directory.toNIO, ProjectOperation.Sync)
+            .sync(noInspect, noFetch, init = true, mode = mode)
+          result.declarationCreated shouldBe true
+          result.lockChanged shouldBe false
+        }
+      }
   }
 
   "project sync" should {

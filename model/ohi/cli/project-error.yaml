@@ -48,6 +48,8 @@ enums:
         description: The project directory or its files are invalid.
       INVALID_SELECTION:
         description: A selected publication, its chosen artifact or one of the publication's dependencies cannot be resolved.
+      LOCK_OUTDATED:
+        description: The ohi.lock.json file is missing or doesn't match the dependencies in ohi.yaml, and the command was asked not to update it.
       STORAGE_ERROR:
         description: A file system operation on the project failed.
       OPERATION_FAILED:

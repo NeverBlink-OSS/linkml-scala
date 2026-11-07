@@ -719,6 +719,41 @@ class ProjectCommandsSpec extends AnyWordSpec, Matchers {
       }
     }
 
+    "report an up-to-date lock with lock --check" in {
+      withDirectory { project =>
+        val lock = """{"format_version":2,"selections":[],"files":[]}"""
+        os.write(project / "ohi.yaml", emptyDeclaration)
+        os.write(project / "ohi.lock.json", lock)
+        successful(run(Lock, "lock", "--check", "--project", project.toString)) shouldBe
+          "ohi.lock.json is up to date.\n"
+        os.read(project / "ohi.lock.json") shouldBe lock
+      }
+    }
+
+    "refuse a missing lock with lock --check and show how to update it" in {
+      withDirectory { project =>
+        os.write(project / "ohi.yaml", emptyDeclaration)
+        val error = failed(run(Lock, "lock", "--check", "--project", project.toString))
+        error should include("ohi.lock.json is missing or out of date.")
+        error should include("No project files were written.")
+        error should include(s"Update the lock with:\n  ohi lock --project '$project'")
+        os.list(project).map(_.last) shouldBe Seq("ohi.yaml")
+      }
+    }
+
+    "refuse a missing lock with sync --locked" in {
+      withDirectory { project =>
+        os.write(project / "ohi.yaml", emptyDeclaration)
+        unchangedError(
+          failed(run(Sync, "sync", "--locked", "--project", project.toString, "--json")),
+          "SYNC",
+          project,
+          "LOCK_OUTDATED",
+        )
+        os.list(project).map(_.last) shouldBe Seq("ohi.yaml")
+      }
+    }
+
     "refuse sync with neither record and identify the project creation commands" in {
       withDirectory { project =>
         val error = unchangedError(
@@ -997,6 +1032,12 @@ class ProjectCommandsSpec extends AnyWordSpec, Matchers {
       s"reject $option for sync before reading project records" in {
         usageError(Sync, "sync", option, "value") should include(option)
       }
+
+    "reject sync with both --locked and --frozen" in {
+      usageError(Sync, "sync", "--locked", "--frozen") should include(
+        "--locked and --frozen cannot be used together.",
+      )
+    }
 
     "reject positional sync input and identify the project option" in {
       usageError(Sync, "sync", "unexpected") should include(
