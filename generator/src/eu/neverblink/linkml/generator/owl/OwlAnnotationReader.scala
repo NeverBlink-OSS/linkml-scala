@@ -124,7 +124,7 @@ private[owl] final class OwlAnnotationReader(
   ): Metadata = {
     annotations.foreach(a => remaining.addOne(plainInLanguage(a)))
     val n = remaining.length
-    // The annotations that were taken, instead of removing them one by one.
+    // The annotations that were taken.
     val used = new java.util.BitSet(n)
     var metadata = Metadata.empty
     val values = mutable.ArrayBuffer.empty[String | LocalizedText | UriOrCurie]

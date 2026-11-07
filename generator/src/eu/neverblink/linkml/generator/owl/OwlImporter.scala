@@ -352,7 +352,7 @@ object OwlImporter {
     private def isDatatype(iri: String): Boolean =
       isDeclared(iri, EntityKind.Datatype) || OwlRdfReader.isBuiltInDatatype(iri)
 
-    /** Entries of an index, or a shared empty sequence if there are none. */
+    /** Entries of an index, or an empty sequence if there are none. */
     private def entriesOf[A](
         index: mutable.HashMap[String, mutable.ArrayBuffer[A]],
         key: String,
@@ -1786,9 +1786,8 @@ object OwlImporter {
     }
 
     /** Whether a disjointness group of more than two named classes goes on each member: all members
-      * are classes and the group is not exactly the children of their parent. That case is handled
-      * with `children_are_mutually_disjoint` on the parent. Each member has the same axiom, so the
-      * answer is computed once.
+      * are classes and the group is not exactly the children of their parent, which
+      * `children_are_mutually_disjoint` on the parent covers. The answer is cached per axiom.
       */
     private def isOnEachMember(a: DisjointClasses): Boolean = {
       val known = onEachMember.get(a)

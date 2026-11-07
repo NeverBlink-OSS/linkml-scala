@@ -146,7 +146,7 @@ object OwlRdfReader {
       var i = 0
       while (i < triples.length) {
         val t = triples(i)
-        // A repeated triple is used from the start, so it is read once.
+        // Graph marks repeated triples as used, so this skips them.
         if (t.pred == Rdf.`type` && !graph.isUsed(i)) {
           t.subj match {
             case subject: Iri =>

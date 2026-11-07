@@ -217,8 +217,8 @@ final class OwlRdfWriter(sink: RdfSink) {
     annotateMain(subject, predicate, target, annotations)
   }
 
-  /** Writes axiom annotations on an `owl:Axiom` node that points at the main triple. If the object
-    * is a list, the target (`null`) isn't known here, so the annotations are dropped.
+  /** Writes axiom annotations on an `owl:Axiom` node that points at the main triple. Drops them if
+    * `target` is `null`, which happens when the object is a list.
     */
   private def annotateMain(
       subject: Resource,

@@ -28,7 +28,7 @@ final class Graph(val triples: IndexedSeq[Triple]) {
     // Count the triples of each subject, then put their indices in one array, grouped by subject.
     // A repeated triple is marked as used and left out.
     val n = triples.size
-    // The indices of the subject of each triple, or null for a repeat
+    // The `Indices` of the subject of each triple, or null for a repeat
     val subjectOf = new Array[Indices](n)
     val seen = new mutable.HashSet[Triple](n, mutable.HashSet.defaultLoadFactor)
     var i = 0
@@ -72,7 +72,7 @@ final class Graph(val triples: IndexedSeq[Triple]) {
   /** The number of subjects. */
   def subjectCount: Int = subjects.length
 
-  /** The triples of the subject at `k`, in order of first appearance. */
+  /** The `k`-th subject and its triples. Subjects are in order of first appearance. */
   def subjectAt(k: Int): Indices = subjects(k)
 
   /** The triples about the subject. */

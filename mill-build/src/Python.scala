@@ -142,9 +142,9 @@ object Python {
     stageJars(linkerJars, dest / "_native" / "linker")
   }
 
-  /** Copies the jars into `into`, with their place on the classpath and a dash at the start of
-    * their names. hatch_build.py sorts the jars by that number to get the classpath order back. The
-    * order matters: when two jars have the same class, the linker takes the first one.
+  /** Copies the jars into `into` as `<n>-<name>`, where `n` is the jar's place on the classpath.
+    * hatch_build.py sorts the jars by `n` to restore that order. The order matters because the
+    * linker takes the first jar that has a class.
     */
   private def stageJars(jars: Seq[os.Path], into: os.Path): Unit = {
     os.makeDir.all(into)
