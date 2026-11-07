@@ -8,6 +8,7 @@ from .generated_lock import ArtifactSelection, Lock, LockedFile
 from .generated_lock_error import LockError, LockErrorCode, LockOperation
 from .generated_search import FacetCount, FacetValueCount, SearchHit, SearchResult
 from .generated_search_request import SearchRequest
+from .pages import Release, ohi_release_page
 from .publication import decode_publication
 from .lock import LockException, decode_lock, encode_lock, read_lock, write_lock
 
@@ -15,6 +16,6 @@ __all__ = [
     "Artifact", "ArtifactOrigin", "ArtifactSelection", "CatalogClient", "CatalogConfig", "CatalogError",
     "CatalogErrorCode", "CatalogException", "CatalogOperation", "Dependency", "FacetCount",
     "FacetValueCount", "Format", "Lock", "LockedFile", "LockError", "LockErrorCode", "LockException",
-    "LockOperation", "Publication", "SearchHit", "SearchRequest", "SearchResult", "decode_publication",
-    "decode_lock", "encode_lock", "read_lock", "write_lock",
+    "LockOperation", "Publication", "Release", "SearchHit", "SearchRequest", "SearchResult",
+    "decode_publication", "decode_lock", "encode_lock", "ohi_release_page", "read_lock", "write_lock",
 ]
