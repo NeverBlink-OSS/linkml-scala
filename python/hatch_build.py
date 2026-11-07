@@ -85,13 +85,23 @@ def tool(executable: str, variable: str, why: str) -> str:
     )
 
 
+def classpath(folder: Path) -> list[str]:
+    """The jars in the folder, in classpath order.
+
+    Each jar name starts with its place on the classpath and a dash, such as `12-scalalib.jar`.
+    The jars are sorted by that number, not by name, so `100-` comes after `99-`.
+    """
+    jars = folder.glob("*.jar")
+    return [str(p) for p in sorted(jars, key=lambda p: int(p.name.split("-", 1)[0]))]
+
+
 def link(root: Path) -> Path:
     """Run Scala Native's linker over the bundled IR, producing the shared library."""
     output = root / "ohi_linkml" / "_lib" / library_name()
     output.parent.mkdir(parents=True, exist_ok=True)
 
-    nir = sorted(str(p) for p in (root / NIR_DIR).glob("*.jar"))
-    linker = sorted(str(p) for p in (root / LINKER_DIR).glob("*.jar"))
+    nir = classpath(root / NIR_DIR)
+    linker = classpath(root / LINKER_DIR)
     if not nir or not linker:
         raise RuntimeError(f"the source distribution is missing its jars: {root / '_native'}")
 

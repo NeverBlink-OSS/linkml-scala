@@ -578,6 +578,7 @@ class PydanticGeneratorSpec extends AnyWordSpec, Matchers {
       generate(schema("optional")) should include(
         "class ItemDocument(RootModel[Item | None]):",
       )
+      generate(schema("optional")) should include("A whole document: one Item or null.")
       generate(schema("list")) should include(
         "class ItemDocument(RootModel[list[Item]]):",
       )

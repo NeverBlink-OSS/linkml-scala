@@ -410,6 +410,65 @@ class TypeScriptGeneratorSpec extends AnyWordSpec, Matchers {
       ts should include("export type KeyOptional<T, K extends keyof T>")
     }
 
+    "write a document type for a tree root that is not one object" when {
+      def withTreeRootAs(form: String): String = generate(
+        s"""classes:
+           |  Item:
+           |    tree_root: true
+           |    extensions:
+           |      tree_root_as: $form
+           |    attributes:
+           |      key: {key: true}
+           |      value: {required: true}
+           |""".stripMargin,
+      )
+
+      "plain: none" in {
+        withTreeRootAs("plain") should not include "ItemDocument"
+      }
+
+      "optional: the object or null" in {
+        withTreeRootAs("optional") should include(
+          "/** A whole document: one Item or null. */\nexport type ItemDocument = Item | null;\n",
+        )
+      }
+
+      "list: a list of objects" in {
+        withTreeRootAs("list") should include(
+          "/** A whole document: a list of Item. */\nexport type ItemDocument = Item[];\n",
+        )
+      }
+
+      "compact_dict: a dict of objects by key" in {
+        val ts = withTreeRootAs("compact_dict")
+        ts should include(
+          "export type ItemDocument = Record<string, KeyOptional<Item, \"key\">>;\n",
+        )
+        ts should include("export type KeyOptional<T, K extends keyof T>")
+      }
+
+      "simple_dict: a dict of values or objects by key" in {
+        val ts = withTreeRootAs("simple_dict")
+        ts should include(
+          "export type ItemDocument = Record<string, string | KeyOptional<Item, \"key\">>;\n",
+        )
+        ts should include("export type KeyOptional<T, K extends keyof T>")
+      }
+
+      "a class with the same name: an error" in {
+        val ex = the[IllegalArgumentException] thrownBy generate(
+          """classes:
+            |  Item:
+            |    tree_root: true
+            |    extensions:
+            |      tree_root_as: list
+            |  ItemDocument:
+            |""".stripMargin,
+        )
+        ex.getMessage should include("'ItemDocument'")
+      }
+    }
+
     "generate type designators as discriminated unions" in {
       val ts = generate(
         """classes:

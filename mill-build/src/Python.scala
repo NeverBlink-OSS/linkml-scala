@@ -142,15 +142,21 @@ object Python {
     stageJars(linkerJars, dest / "_native" / "linker")
   }
 
+  /** Copies the jars into `into`, with their place on the classpath and a dash at the start of
+    * their names. hatch_build.py sorts the jars by that number to get the classpath order back. The
+    * order matters: when two jars have the same class, the linker takes the first one.
+    */
   private def stageJars(jars: Seq[os.Path], into: os.Path): Unit = {
     os.makeDir.all(into)
+    var i = 0
     jars.foreach { jar =>
       // Dependency jars are uniquely named; ours are all `out.jar`, so name those by module.
       val name =
         if jar.last == "out.jar" then
           jar.segments.toSeq.dropRight(2).takeRight(2).mkString("-") + ".jar"
         else jar.last
-      os.copy.over(jar, into / name)
+      os.copy.over(jar, into / s"$i-$name")
+      i += 1
     }
   }
 

@@ -32,6 +32,20 @@ const zoo = JSON.parse(text) as Zoo;          // load
 const text2 = JSON.stringify(zoo, null, 2);   // dump
 ```
 
+If the tree root has a `tree_root_as` other than `plain`, a document isn't one object. The
+file then also has a type for the whole document, named after the tree root:
+
+| `tree_root_as`  | Document type                                              |
+|-----------------|------------------------------------------------------------|
+| `optional`      | `export type ZooDocument = Zoo \| null;`                   |
+| `list`          | `export type ZooDocument = Zoo[];`                         |
+| `compact_dict`  | `export type ZooDocument = Record<string, KeyOptional<Zoo, "id">>;` |
+| `simple_dict`   | `export type ZooDocument = Record<string, V \| KeyOptional<Zoo, "id">>;` |
+
+Here `id` is the key slot of `Zoo`, and `V` is the type of its value slot.
+
+Load such a document with `JSON.parse(text) as ZooDocument`.
+
 The cast is not checked at runtime. If the JSON doesn't fit the schema, you find out only when
 your code reads a field that isn't what the type says. If the data comes from somewhere you
 don't trust, validate it first with the JSON Schema from `to json-schema`.
@@ -197,3 +211,7 @@ permissible values (e.g. a dynamic enum) becomes `string`.
 
 Classes and enums get `PascalCase` names. A name that starts with a digit or is reserved in
 TypeScript gets a `_` prefix (e.g. a class `Record` becomes `_Record`).
+
+The type of a whole document gets the name of the tree root plus `Document`, such as
+`ZooDocument`. If another generated type has the same name, such as a class `ZooDocument`, the
+generator stops with an error that names both, so that you can rename one.

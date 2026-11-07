@@ -307,9 +307,13 @@ classes:
       tree_root_as: list      # the document is a JSON array of Person
 ```
 
-At generation time `--tree-root` picks a different root class, and
-`--tree-root-inline-type` changes the shape without editing the schema. Details and the
-full inlining decision table are in `200-limitations.md`.
+The JSON Schema, Pydantic, Scala and TypeScript generators follow `tree_root_as`. For a shape
+other than `plain`, the code generators add a type for the whole document, named after the
+root class, such as `PersonDocument`.
+
+At generation time `--tree-root` picks a different root class (not in the Scala generator),
+and the JSON Schema generator's `--tree-root-inline-type` changes the shape without editing the
+schema. Details and the full inlining decision table are in `200-limitations.md`.
 
 ## Documentation and metadata
 

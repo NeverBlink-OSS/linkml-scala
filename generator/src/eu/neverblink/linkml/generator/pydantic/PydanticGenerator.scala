@@ -2,7 +2,7 @@ package eu.neverblink.linkml.generator.pydantic
 
 import eu.neverblink.linkml.generator.options.PydanticGeneratorOptions
 import eu.neverblink.linkml.generator.CharDocumentGenerator
-import eu.neverblink.linkml.generator.util.{DocLines, GeneratedHeader, Pruning}
+import eu.neverblink.linkml.generator.util.{DocLines, GeneratedHeader, Pruning, TreeRootDocument}
 import eu.neverblink.linkml.generator.util.Pruning.pruning
 import eu.neverblink.linkml.generator.util.metadataLanguage
 import eu.neverblink.linkml.rdf.io.{CharSink, StringSink}
@@ -558,7 +558,7 @@ final class PydanticGenerator(using sv: SchemaView)
       .filter(r => classes.exists(_.name == r.name))
     val functions = sv.functions.values.filter(query.reachable).toVector
       .sortBy(fv => sv.elementOrder(fv.function))
-    Definitions(classes, enums, root.map(r => (r, className(r).concat("Document"))), functions)
+    Definitions(classes, enums, root.map(r => (r, TreeRootDocument.name(className(r)))), functions)
   }
 
   /** The names of the classes, class unions, enums and document type that the module defines with
@@ -621,11 +621,11 @@ final class PydanticGenerator(using sv: SchemaView)
       documentType(r, ctx).foreachFast { tpe =>
         ctx.imports.pydantic("RootModel")
         body.append("\n\nclass ")
-        body.append(className(r).concat("Document"))
+        body.append(TreeRootDocument.name(className(r)))
         body.append("(RootModel[")
         body.append(tpe)
         body.append("]):\n")
-        writeDoc(body, Seq(s"A whole document: ${documentDoc(r)}."), "    ")
+        writeDoc(body, Seq(TreeRootDocument.description(r, r.treeRootInlineType(None))), "    ")
       }
     }
 
@@ -646,14 +646,6 @@ final class PydanticGenerator(using sv: SchemaView)
     sink.append(helpers.result)
     sink.append(body.result)
   }
-
-  private def documentDoc(root: ClassView): String =
-    root.treeRootInlineType(None) match {
-      case InlineType.plain => s"a ${root.name}"
-      case InlineType.optional => s"a ${root.name} or null"
-      case InlineType.list => s"a list of ${root.name}"
-      case InlineType.dict(_) => s"a dict of ${root.name} by key"
-    }
 
   private def writeBase(sink: CharSink, ctx: Context): Unit = {
     val im = ctx.imports

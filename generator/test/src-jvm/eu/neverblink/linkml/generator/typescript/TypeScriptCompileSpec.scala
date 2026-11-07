@@ -2,7 +2,7 @@ package eu.neverblink.linkml.generator.typescript
 
 import eu.neverblink.linkml.generator.DocumentModels.*
 import eu.neverblink.linkml.generator.options.{TypeScriptErrorHandling, TypeScriptGeneratorOptions}
-import eu.neverblink.linkml.schemaview.{ClassView, CollectionForm, InlineType, SchemaView}
+import eu.neverblink.linkml.schemaview.{ClassView, SchemaView}
 import eu.neverblink.linkml.tests.{ModelCatalogue, ModelCatalogueSpec}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
@@ -99,22 +99,18 @@ class TypeScriptCompileSpec extends AnyWordSpec, Matchers, ModelCatalogueSpec {
       val dir = safeName(entry.name)
       val modelFile = s"$dir/model.ts"
       val model = Try(TypeScriptGenerator(using entry.sv).serialize())
-      val rootType = entry.sv.treeRoot.map(root => documentType(root)(using entry.sv))
       val instanceFiles = (for
         source <- model.toOption.toSeq
-        tpe <- rootType.toSeq
+        root <- entry.sv.treeRoot.toSeq
         (valid, instances) <- Seq(true -> entry.valid, false -> entry.invalid)
         (name, json) <- instances
       yield {
-        // A dict-shaped document needs KeyOptional, which the model only has if it uses it too
-        val keyOptional =
-          if source.contains("export type KeyOptional") then ""
-          else TypeScriptGenerator.keyOptionalDefinition
+        val tpe = documentType(root, source)(using entry.sv)
         val prefix = if valid then "valid" else "invalid"
         val file = s"$dir/${prefix}_${safeName(name)}.ts"
         os.write.over(
           outDir / os.RelPath(file),
-          s"$source\n$keyOptional\nexport const data: $tpe = ${json.strip};\n",
+          s"$source\nexport const data: $tpe = ${json.strip};\n",
           createFolders = true,
         )
         (valid, name) -> file
@@ -243,24 +239,14 @@ object TypeScriptCompileSpec {
     case _ => None
   }
 
-  /** TS type of a whole JSON document: the tree root in its `tree_root_as` form, written with the
-    * names the generated model has. The value of a simple dict entry is looked up in the model with
-    * an indexed access type, rather than worked out here again.
+  /** TS type of a whole JSON document: the `XDocument` type if the model has one, otherwise the
+    * tree root.
     */
-  def documentType(root: ClassView)(using SchemaView): String = {
+  def documentType(root: ClassView, source: String)(using SchemaView): String = {
     val gen = TypeScriptGenerator()
-    val ref = gen.unionName(root).getOrElse(gen.className(root))
-    def key(slot: String) =
-      TypeScriptGenerator.stringLiteral(gen.slotName(root.derivedAttributes(slot)))
-    root.treeRootInlineType(None) match {
-      case InlineType.plain => ref
-      case InlineType.optional => s"$ref | null"
-      case InlineType.list => s"$ref[]"
-      case InlineType.dict(CollectionForm.CompactDict(k)) =>
-        s"Record<string, KeyOptional<$ref, ${key(k)}>>"
-      case InlineType.dict(CollectionForm.SimpleDict(k, v)) =>
-        s"Record<string, $ref[${key(v)}] | KeyOptional<$ref, ${key(k)}>>"
-    }
+    val document = gen.className(root).concat("Document")
+    if source.contains(s"export type $document =") then document
+    else gen.unionName(root).getOrElse(gen.className(root))
   }
 
   private val tsconfig: String =
